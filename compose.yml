@@ -1,0 +1,94 @@
+version: '3.4'
+services:
+  floci:
+    image: hectorvent/floci:latest-aws
+    ports:
+      - '4566:4566'
+    env_file:
+      - 'compose/aws.env'
+    environment:
+      FLOCI_DEFAULT_REGION: eu-west-2
+    volumes:
+      - ./compose/floci/start.d:/etc/floci/init/start.d:ro
+    networks:
+      - cdp-tenant
+
+  redis:
+    image: redis:7.2.3-alpine3.18
+    ports:
+      - '6379:6379'
+    networks:
+      - cdp-tenant
+
+  mongodb:
+    image: mongo:7.0.28
+    networks:
+      - cdp-tenant
+    ports:
+      - '27017:27017'
+    volumes:
+      - ./compose/mongo:/docker-entrypoint-initdb.d:ro
+      - mongodb-data:/data
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.hello().ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  ################################################################################
+
+  your-frontend:
+    build: ./
+    ports:
+      - '3000:3000'
+    links:
+      - 'floci:floci'
+      - 'redis:redis'
+    depends_on:
+      floci:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - 'compose/aws.env'
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      REDIS_HOST: redis
+      LOG_FORMAT: pino-pretty
+      SESSION_COOKIE_SECURE: false
+      USE_SINGLE_INSTANCE_CACHE: true
+      REDIS_TLS: false
+    networks:
+      - cdp-tenant
+
+  # your-backend:
+  #   image: defradigital/your-backend:${YOUR_BACKEND_VERSION:-latest}
+  #   ports:
+  #     - '3555:3555'
+  #   links:
+  #     - 'foci:floci'
+  #     - 'mongodb:mongodb'
+  #   depends_on:
+  #     floci:
+  #       condition: service_healthy
+  #     mongodb:
+  #       condition: service_started
+  #   env_file:
+  #     - 'compose/aws.env'
+  #   environment:
+  #     PORT: 3001
+  #     NODE_ENV: development
+  #     MONGO_URI: mongodb://mongodb:27017/
+  #   networks:
+  #     - cdp-tenant
+
+################################################################################
+
+volumes:
+  mongodb-data:
+
+networks:
+  cdp-tenant:
+    driver: bridge

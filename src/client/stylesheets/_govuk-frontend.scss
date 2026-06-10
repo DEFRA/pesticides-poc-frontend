@@ -1,0 +1,5 @@
+@forward 'pkg:govuk-frontend' with (
+  $govuk-assets-path: '../../../node_modules/govuk-frontend/dist/govuk/assets/',
+  $govuk-new-organisation-colours: true,
+  $govuk-global-styles: true
+);
