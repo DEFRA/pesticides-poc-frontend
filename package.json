@@ -36,7 +36,7 @@
   "author": "Defra DDTS",
   "license": "OGL-UK-3.0",
   "dependencies": {
-    "@defra/cdp-auditing": "0.6.0",
+    "@defra/cdp-auditing": "0.6.1",
     "@defra/cdp-metrics": "0.6.0",
     "@defra/hapi-secure-context": "0.4.0",
     "@defra/hapi-tracing": "1.30.0",
@@ -44,7 +44,7 @@
     "@hapi/catbox-memory": "6.0.2",
     "@hapi/catbox-redis": "7.0.2",
     "@hapi/hapi": "21.4.9",
-    "@hapi/inert": "7.1.0",
+    "@hapi/inert": "7.1.1",
     "@hapi/scooter": "8.0.0",
     "@hapi/vision": "7.0.3",
     "@hapi/yar": "11.0.3",
@@ -84,6 +84,7 @@
     "vitest-fetch-mock": "0.4.5"
   },
   "overrides": {
-    "tmp": "0.2.5"
+    "tmp": "0.2.5",
+    "joi": "18.2.1"
   }
 }
