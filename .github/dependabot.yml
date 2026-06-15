@@ -56,7 +56,8 @@ updates:
     # Schedule run every Monday, local time
     schedule:
       interval: weekly
-      time: '10:30'
+      day: friday
+      time: '05:30'
       timezone: 'Europe/London'
 
     versioning-strategy: increase
@@ -65,6 +66,22 @@ updates:
       # Include direct package.json updates
       - dependency-type: direct
 
+  # Daily grouped npm security updates
+  - package-ecosystem: npm
+    directory: /
+    open-pull-requests-limit: 10
+
+    groups:
+      security:
+        applies-to: security-updates
+        patterns:
+          - '*'
+
+    schedule:
+      interval: daily
+      time: '05:00'
+      timezone: 'Europe/London'
+
   # Update GitHub Actions
   - package-ecosystem: github-actions
     directory: /
@@ -72,5 +89,6 @@ updates:
     # Schedule run every Monday, local time
     schedule:
       interval: weekly
-      time: '10:30'
+      day: friday
+      time: '05:00'
       timezone: 'Europe/London'

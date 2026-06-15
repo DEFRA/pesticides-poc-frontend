@@ -83,6 +83,19 @@ return await fetch(url, {
 
 ## Local Development
 
+### Environment variables
+
+Create your local `.env` file from the example before running the app:
+
+```bash
+cp .env.example .env
+```
+
+The file may be left empty, but it must exist: the development script runs
+`node --watch --env-file-if-exists=.env`, and `--watch` fails to start with an
+`ENOENT` error if the `.env` file is missing. `.env` is git-ignored, so any
+values you add stay local.
+
 ### Setup
 
 Install application dependencies:
