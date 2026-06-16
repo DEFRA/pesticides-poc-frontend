@@ -22,7 +22,8 @@ const MOCK_ROLE_LABELS = {
 }
 
 export async function getPermissions(profile) {
-  const roleKey = profile?.role === 'case_officer' ? 'case_officer' : 'applicant'
+  const roleKey =
+    profile?.role === 'case_officer' ? 'case_officer' : 'applicant'
 
   const privileges = MOCK_PRIVILEGES[roleKey]
 

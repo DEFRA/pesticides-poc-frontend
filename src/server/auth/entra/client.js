@@ -32,7 +32,9 @@ export function getEntraIdConfig() {
     mode: raw.mode,
     tenantId: raw.tenantId,
     authority,
-    wellKnownUrl: authority ? `${authority}/.well-known/openid-configuration` : '',
+    wellKnownUrl: authority
+      ? `${authority}/.well-known/openid-configuration`
+      : '',
     clientId: raw.clientId,
     clientSecret: raw.clientSecret,
     publicBaseUrl: raw.publicBaseUrl,
@@ -169,7 +171,8 @@ function getMissingLiveConfig(entraConfig) {
 
 export function getEntraConfigSummary(baseUrl) {
   const entraConfig = getEntraIdConfig()
-  const missing = entraConfig.mode === 'live' ? getMissingLiveConfig(entraConfig) : []
+  const missing =
+    entraConfig.mode === 'live' ? getMissingLiveConfig(entraConfig) : []
 
   return {
     mode: entraConfig.mode,
@@ -197,7 +200,8 @@ export async function startLiveEntra(baseUrl, options = {}) {
     )
   }
 
-  const { authorization_endpoint: authorizationEndpoint } = await getEntraOidcConfig()
+  const { authorization_endpoint: authorizationEndpoint } =
+    await getEntraOidcConfig()
 
   const state = randomUUID()
   const nonce = randomUUID()
@@ -242,7 +246,10 @@ export async function startLiveEntra(baseUrl, options = {}) {
 }
 
 function buildTokenRequestBody(entraConfig, params) {
-  const body = new URLSearchParams({ client_id: entraConfig.clientId, ...params })
+  const body = new URLSearchParams({
+    client_id: entraConfig.clientId,
+    ...params
+  })
   if (entraConfig.clientSecret) {
     body.set('client_secret', entraConfig.clientSecret)
   }
@@ -270,7 +277,12 @@ function normaliseTokenResponse(payload) {
   }
 }
 
-async function exchangeCodeForTokens(entraConfig, code, redirectUri, codeVerifier) {
+async function exchangeCodeForTokens(
+  entraConfig,
+  code,
+  redirectUri,
+  codeVerifier
+) {
   const { token_endpoint: tokenEndpoint } = await getEntraOidcConfig()
 
   const params = {
@@ -321,14 +333,18 @@ export function mapEntraClaimsToProfile(claims, entraConfig) {
   const name = String(claims.name || '') || `${firstName} ${lastName}`.trim()
   const roles = readRoles(claims)
 
-  const caseOfficerValue = String(entraConfig.roles.caseOfficerValue || 'case_officer')
+  const caseOfficerValue = String(
+    entraConfig.roles.caseOfficerValue || 'case_officer'
+  )
   const hasCaseOfficerRole = roles.some(
     (value) => value.toLowerCase() === caseOfficerValue.toLowerCase()
   )
 
   return {
     subject: String(subject),
-    email: String(claims.email || claims.preferred_username || claims.upn || ''),
+    email: String(
+      claims.email || claims.preferred_username || claims.upn || ''
+    ),
     firstName,
     lastName,
     name,
@@ -369,7 +385,11 @@ export async function completeLiveEntra(callback, sessionState) {
     ...decodeJwtPayload(tokens.idToken)
   }
 
-  if (sessionState?.nonce && claims?.nonce && claims.nonce !== sessionState.nonce) {
+  if (
+    sessionState?.nonce &&
+    claims?.nonce &&
+    claims.nonce !== sessionState.nonce
+  ) {
     throw createHttpError(
       HTTP_UNPROCESSABLE_ENTITY,
       'Microsoft Entra nonce validation failed in callback'
@@ -393,13 +413,17 @@ export async function buildEntraSignOutUrl(baseUrl, idTokenHint) {
     return ''
   }
 
-  const { end_session_endpoint: endSessionEndpoint } = await getEntraOidcConfig()
+  const { end_session_endpoint: endSessionEndpoint } =
+    await getEntraOidcConfig()
   if (!endSessionEndpoint) {
     return ''
   }
 
   const search = new URLSearchParams()
-  const postLogoutRedirectUri = resolveUrl(baseUrl, entraConfig.postLogoutRedirectUri)
+  const postLogoutRedirectUri = resolveUrl(
+    baseUrl,
+    entraConfig.postLogoutRedirectUri
+  )
   if (postLogoutRedirectUri) {
     search.set('post_logout_redirect_uri', postLogoutRedirectUri)
   }

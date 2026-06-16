@@ -176,7 +176,8 @@ function getMissingLiveConfig(defraIdConfig) {
 
 export function getDefraIdConfigSummary(baseUrl) {
   const defraIdConfig = getDefraIdConfig()
-  const missing = defraIdConfig.mode === 'live' ? getMissingLiveConfig(defraIdConfig) : []
+  const missing =
+    defraIdConfig.mode === 'live' ? getMissingLiveConfig(defraIdConfig) : []
 
   return {
     mode: defraIdConfig.mode,
@@ -204,7 +205,8 @@ export async function startLiveDefraId(baseUrl, options = {}) {
     )
   }
 
-  const { authorization_endpoint: authorizationEndpoint } = await getDefraIdOidcConfig()
+  const { authorization_endpoint: authorizationEndpoint } =
+    await getDefraIdOidcConfig()
 
   const state = randomUUID()
   const nonce = randomUUID()
@@ -256,7 +258,10 @@ export async function startLiveDefraId(baseUrl, options = {}) {
 }
 
 function buildTokenRequestBody(defraIdConfig, params) {
-  const body = new URLSearchParams({ client_id: defraIdConfig.clientId, ...params })
+  const body = new URLSearchParams({
+    client_id: defraIdConfig.clientId,
+    ...params
+  })
   if (defraIdConfig.clientSecret) {
     body.set('client_secret', defraIdConfig.clientSecret)
   }
@@ -284,7 +289,12 @@ function normaliseTokenResponse(payload) {
   }
 }
 
-async function exchangeCodeForTokens(defraIdConfig, code, redirectUri, codeVerifier) {
+async function exchangeCodeForTokens(
+  defraIdConfig,
+  code,
+  redirectUri,
+  codeVerifier
+) {
   const { token_endpoint: tokenEndpoint } = await getDefraIdOidcConfig()
 
   const params = {
@@ -307,7 +317,11 @@ async function exchangeCodeForTokens(defraIdConfig, code, redirectUri, codeVerif
   })
 
   const payload = await parseJsonSafe(response)
-  throwIfResponseNotOk(response, payload, 'Defra Identity token exchange failed')
+  throwIfResponseNotOk(
+    response,
+    payload,
+    'Defra Identity token exchange failed'
+  )
 
   return normaliseTokenResponse(payload)
 }
@@ -323,7 +337,9 @@ function readOrganisations(relationships) {
     .map((entry) => {
       if (entry && typeof entry === 'object') {
         return {
-          relationshipId: String(entry.relationshipId || entry.organisationId || ''),
+          relationshipId: String(
+            entry.relationshipId || entry.organisationId || ''
+          ),
           organisationId: String(entry.organisationId || ''),
           organisationName: String(entry.organisationName || entry.name || '')
         }
@@ -407,7 +423,11 @@ export async function completeLiveDefraId(callback, sessionState) {
     ...decodeJwtPayload(tokens.idToken)
   }
 
-  if (sessionState?.nonce && claims?.nonce && claims.nonce !== sessionState.nonce) {
+  if (
+    sessionState?.nonce &&
+    claims?.nonce &&
+    claims.nonce !== sessionState.nonce
+  ) {
     throw createHttpError(
       HTTP_UNPROCESSABLE_ENTITY,
       'Defra Identity nonce validation failed in callback'
@@ -431,13 +451,17 @@ export async function buildDefraIdSignOutUrl(baseUrl, idTokenHint) {
     return ''
   }
 
-  const { end_session_endpoint: endSessionEndpoint } = await getDefraIdOidcConfig()
+  const { end_session_endpoint: endSessionEndpoint } =
+    await getDefraIdOidcConfig()
   if (!endSessionEndpoint) {
     return ''
   }
 
   const search = new URLSearchParams()
-  const postLogoutRedirectUri = resolveUrl(baseUrl, defraIdConfig.postLogoutRedirectUri)
+  const postLogoutRedirectUri = resolveUrl(
+    baseUrl,
+    defraIdConfig.postLogoutRedirectUri
+  )
   if (postLogoutRedirectUri) {
     search.set('post_logout_redirect_uri', postLogoutRedirectUri)
   }

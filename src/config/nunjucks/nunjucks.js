@@ -40,7 +40,7 @@ export const nunjucksConfig = {
       environment: nunjucksEnvironment
     },
     relativeTo: path.resolve(dirname, '../..'),
-    path: 'server/routes',
+    path: ['server/routes', 'server/auth'],
     isCached: config.get('isProduction'),
     context
   }

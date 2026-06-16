@@ -5,12 +5,13 @@
 
 import { defraIdRoutes } from './defra-id/routes.js'
 import { entraRoutes } from './entra/routes.js'
+import { sharedAuthRoutes } from './routes.js'
 
 export const auth = {
   plugin: {
     name: 'auth',
     async register(server) {
-      await server.register([defraIdRoutes, entraRoutes])
+      await server.register([defraIdRoutes, entraRoutes, sharedAuthRoutes])
     }
   }
 }
