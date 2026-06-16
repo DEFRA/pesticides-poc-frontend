@@ -102,15 +102,16 @@ describe('#auth sign-in flows (mock mode)', () => {
       url: start.headers.location,
       headers: { cookie }
     })
-    expect(callback.headers.location).toBe('/auth/account')
+    expect(callback.headers.location).toBe('/admin/applications')
 
-    const account = await server.inject({
+    const admin = await server.inject({
       method: 'GET',
-      url: '/auth/account',
+      url: '/admin/applications',
       headers: { cookie: cookieFrom(callback) || cookie }
     })
-    expect(account.result).toEqual(expect.stringContaining('Ulysses Alvarez'))
-    expect(account.result).toEqual(expect.stringContaining('Case officer'))
+    expect(admin.statusCode).toBe(statusCodes.ok)
+    expect(admin.result).toEqual(expect.stringContaining('Ulysses Alvarez'))
+    expect(admin.result).toEqual(expect.stringContaining('Applications'))
   })
 
   test('sign-out clears the session and redirects home', async () => {
@@ -214,5 +215,59 @@ describe('#Defra Identity sign-in page (live mode)', () => {
     })
 
     expect(result).toEqual(expect.stringContaining('not fully configured'))
+  })
+})
+
+describe('#Entra sign-in page (live mode)', () => {
+  afterEach(() => {
+    config.set('auth.entra.mode', 'mock')
+  })
+
+  test('confirms "Live mode is enabled" when fully configured', async () => {
+    config.set('auth.entra.mode', 'live')
+    config.set('auth.entra.tenantId', 'tid')
+    config.set('auth.entra.clientId', 'entra-client')
+    config.set('auth.entra.clientSecret', 'entra-secret')
+
+    const { statusCode, result } = await server.inject({
+      method: 'GET',
+      url: '/auth/entra/sign-in'
+    })
+
+    expect(statusCode).toBe(statusCodes.ok)
+    expect(result).toEqual(expect.stringContaining('Live mode is enabled'))
+    expect(result).toEqual(expect.stringContaining('entra-start'))
+  })
+})
+
+describe('#admin applications (case-officer guard)', () => {
+  test('redirects an unauthenticated user to the staff sign-in', async () => {
+    const { statusCode, headers } = await server.inject({
+      method: 'GET',
+      url: '/admin/applications'
+    })
+    expect(statusCode).toBe(statusCodes.redirect)
+    expect(headers.location).toContain('/auth/entra/sign-in')
+  })
+
+  test('404s an applicant who is not a case officer', async () => {
+    const start = await server.inject({
+      method: 'GET',
+      url: '/auth/defra-id/start'
+    })
+    const cookie = cookieFrom(start)
+    const callback = await server.inject({
+      method: 'GET',
+      url: start.headers.location,
+      headers: { cookie }
+    })
+    const sessionCookie = cookieFrom(callback) || cookie
+
+    const admin = await server.inject({
+      method: 'GET',
+      url: '/admin/applications',
+      headers: { cookie: sessionCookie }
+    })
+    expect(admin.statusCode).toBe(statusCodes.notFound)
   })
 })

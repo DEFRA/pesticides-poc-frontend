@@ -77,9 +77,15 @@ describe('#resolvePostLoginRedirect', () => {
     ).toBe('/admin/applications')
   })
 
-  test('case officers default to the account page for non-admin targets', () => {
+  test('case officers default to the admin applications view', () => {
+    expect(resolvePostLoginRedirect('case_officer', '')).toBe(
+      PAGE_PATHS.ADMIN_APPLICATIONS
+    )
+  })
+
+  test('case officers are not dropped onto a non-admin returnTo', () => {
     expect(resolvePostLoginRedirect('case_officer', '/register/type')).toBe(
-      PAGE_PATHS.ACCOUNT
+      PAGE_PATHS.ADMIN_APPLICATIONS
     )
   })
 

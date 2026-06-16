@@ -7,6 +7,8 @@
 // user. Authorisation (role + scope) is resolved downstream via get-permissions,
 // NOT taken from the raw IdP token. See docs/auth/AUTH-ARCHITECTURE.md.
 
+import { statusCodes } from '#/server/common/constants/status-codes.js'
+
 import { getPermissions } from './get-permissions.js'
 
 export const AUTH_SESSION_KEY = 'auth'
@@ -117,8 +119,9 @@ export function resolvePostLoginRedirect(role, returnTo) {
   const isAdminPath = target.startsWith('/admin')
 
   if (role === 'case_officer') {
-    // Case officers belong in the admin area; honour an admin deep-link only.
-    return isAdminPath ? target : PAGE_PATHS.ACCOUNT
+    // Case officers land in the admin area: honour an admin deep-link, otherwise
+    // the admin applications view (their home).
+    return isAdminPath ? target : PAGE_PATHS.ADMIN_APPLICATIONS
   }
 
   // Applicants must never be dropped onto case-officer-only (admin) pages.
@@ -134,36 +137,51 @@ export async function applyProfile(
   const { role: roleLabel, scope } = await getPermissions(profile)
   const session = getAuthSession(request)
 
+  // Normalise optional fields once so a partial profile/token can't leave gaps.
+  const p = {
+    subject: '',
+    crn: '',
+    email: '',
+    firstName: '',
+    lastName: '',
+    name: '',
+    organisationId: '',
+    organisations: [],
+    roles: [],
+    claims: {},
+    ...profile
+  }
+  const t = { token: '', refreshToken: '', idToken: '', ...tokens }
+
   const updated = {
     ...session,
     isAuthenticated: true,
     provider,
     mode,
-    subject: profile.subject,
-    crn: profile.crn || '',
-    email: profile.email || '',
-    firstName: profile.firstName || '',
-    lastName: profile.lastName || '',
-    name: profile.name || '',
-    organisationId: profile.organisationId || '',
-    organisations: profile.organisations || [],
-    roles: profile.roles || [],
-    role: profile.role,
+    subject: p.subject,
+    crn: p.crn,
+    email: p.email,
+    firstName: p.firstName,
+    lastName: p.lastName,
+    name: p.name,
+    organisationId: p.organisationId,
+    organisations: p.organisations,
+    roles: p.roles,
+    role: p.role,
     roleLabel,
     scope,
-    claims: profile.claims || {},
-    token: tokens.token || '',
-    refreshToken: tokens.refreshToken || '',
-    idTokenHint: tokens.idToken || '',
+    claims: p.claims,
+    token: t.token,
+    refreshToken: t.refreshToken,
+    idTokenHint: t.idToken,
     authenticatedAt: new Date().toISOString(),
-    currentRole: profile.role,
+    currentRole: p.role,
     // Clear the transient sign-in values now the exchange is complete.
     pendingState: '',
     pendingNonce: '',
     pkceVerifier: '',
     pendingRedirectUri: '',
-    pendingIdentity:
-      profile.role === 'case_officer' ? 'case_officer' : 'applicant'
+    pendingIdentity: p.role === 'case_officer' ? 'case_officer' : 'applicant'
   }
 
   return setAuthSession(request, updated)
@@ -207,7 +225,7 @@ export function requireRole(requiredRole) {
             ? 'Case officer access is required for this page'
             : 'Applicant access is required for this page'
         )
-        .code(404)
+        .code(statusCodes.notFound)
         .takeover()
     }
 

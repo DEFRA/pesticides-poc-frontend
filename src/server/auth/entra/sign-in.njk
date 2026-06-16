@@ -3,6 +3,7 @@
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/inset-text/macro.njk" import govukInsetText %}
 
 {% block content %}
   {{ appHeading({
@@ -40,6 +41,12 @@
             iconFallbackText: "Warning"
           }) }}
         {% else %}
+          {% if summary.isLive %}
+            {{ govukInsetText({
+              text: "Live mode is enabled — you will sign in with your real Defra staff account.",
+              attributes: { "data-testid": "live-enabled" }
+            }) }}
+          {% endif %}
           {{ govukButton({
             text: "Sign in",
             href: "/auth/entra/start" + ("?returnTo=" + returnTo if returnTo else ""),
