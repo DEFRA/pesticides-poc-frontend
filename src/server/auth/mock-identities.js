@@ -11,12 +11,12 @@
 export function buildMockDefraIdIdentity(identity) {
   if (identity === 'case_officer') {
     return {
-      subject: 'urn:fcp:defra-id:case-officer-ulysses-alvarez',
+      subject: 'urn:fcp:defra-id:case-officer-ulysses',
       crn: '',
       email: 'ulysses.alvarez@defra.gov.uk',
       firstName: 'Ulysses',
-      lastName: 'Alvarez',
-      name: 'Ulysses Alvarez',
+      lastName: 'Case Officer',
+      name: 'Ulysses Case Officer',
       organisationId: '',
       organisations: [],
       roles: ['case_officer'],
@@ -26,12 +26,12 @@ export function buildMockDefraIdIdentity(identity) {
   }
 
   return {
-    subject: 'urn:fcp:defra-id:applicant-alex-grower',
+    subject: 'urn:fcp:defra-id:applicant-ulysses',
     crn: '1100100100',
-    email: 'alex.grower@example.com',
-    firstName: 'Alex',
-    lastName: 'Grower',
-    name: 'Alex Grower',
+    email: 'ulysses.alvarez@cognizant.com',
+    firstName: 'Ulysses',
+    lastName: 'Applicant',
+    name: 'Ulysses Applicant',
     organisationId: '5566778',
     organisations: [
       {
@@ -53,11 +53,11 @@ export function buildMockDefraIdIdentity(identity) {
 
 export function buildMockEntraIdentity() {
   return {
-    subject: 'urn:entra:case-officer-ulysses-alvarez',
+    subject: 'urn:entra:case-officer-ulysses',
     email: 'ulysses.alvarez@defra.gov.uk',
     firstName: 'Ulysses',
-    lastName: 'Alvarez',
-    name: 'Ulysses Alvarez',
+    lastName: 'Case Officer',
+    name: 'Ulysses Case Officer',
     roles: ['case_officer'],
     role: 'case_officer',
     sessionId: 'mock-session-entra-case-officer'

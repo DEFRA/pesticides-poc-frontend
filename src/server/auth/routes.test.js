@@ -85,7 +85,9 @@ describe('#auth sign-in flows (mock mode)', () => {
       headers: { cookie: sessionCookie }
     })
     expect(register.statusCode).toBe(statusCodes.ok)
-    expect(register.result).toEqual(expect.stringContaining('Alex Grower'))
+    expect(register.result).toEqual(
+      expect.stringContaining('Ulysses Applicant')
+    )
 
     const account = await server.inject({
       method: 'GET',
@@ -119,7 +121,9 @@ describe('#auth sign-in flows (mock mode)', () => {
       headers: { cookie: cookieFrom(callback) || cookie }
     })
     expect(admin.statusCode).toBe(statusCodes.ok)
-    expect(admin.result).toEqual(expect.stringContaining('Ulysses Alvarez'))
+    expect(admin.result).toEqual(
+      expect.stringContaining('Ulysses Case Officer')
+    )
     expect(admin.result).toEqual(expect.stringContaining('Applications'))
   })
 

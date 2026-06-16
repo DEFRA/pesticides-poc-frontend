@@ -8,7 +8,7 @@ describe('#buildMockDefraIdIdentity', () => {
     const identity = buildMockDefraIdIdentity('applicant')
     expect(identity.role).toBe('applicant')
     expect(identity.organisations).toHaveLength(2)
-    expect(identity.name).toBe('Alex Grower')
+    expect(identity.name).toBe('Ulysses Applicant')
   })
 
   test('returns the case officer with no organisations', () => {
