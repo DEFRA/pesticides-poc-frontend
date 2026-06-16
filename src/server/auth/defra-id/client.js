@@ -42,6 +42,7 @@ export function getDefraIdConfig() {
     publicBaseUrl: raw.publicBaseUrl,
     redirectUri: raw.redirectPath,
     postLogoutRedirectUri: raw.signOutRedirectUrl,
+    claims: raw.claims,
     scopes,
     usePkce: true
   }
@@ -357,20 +358,28 @@ function readOrganisations(relationships) {
 }
 
 export function mapDefraIdClaimsToProfile(claims) {
-  const subject = claims.sub
+  // Claim names are configurable (DEFRA_ID_CLAIM_*) so the mapping can match the
+  // live token without code changes; standard OIDC names are kept as fallbacks.
+  const claimMap = getDefraIdConfig().claims
+
+  const subject = claims[claimMap.sub]
   if (!subject) {
     throw createHttpError(
       HTTP_UNPROCESSABLE_ENTITY,
-      'No subject claim (sub) found in Defra Identity token'
+      `No subject claim (${claimMap.sub}) found in Defra Identity token`
     )
   }
 
-  const firstName = String(claims.firstName || claims.given_name || '')
-  const lastName = String(claims.lastName || claims.family_name || '')
+  const firstName = String(
+    claims[claimMap.firstName] || claims.given_name || ''
+  )
+  const lastName = String(claims[claimMap.lastName] || claims.family_name || '')
   const name = String(claims.name || '') || `${firstName} ${lastName}`.trim()
-  const organisations = readOrganisations(claims.relationships)
-  const currentRelationshipId = String(claims.currentRelationshipId || '')
-  const rawRoles = claims.roles
+  const organisations = readOrganisations(claims[claimMap.relationships])
+  const currentRelationshipId = String(
+    claims[claimMap.currentRelationshipId] || ''
+  )
+  const rawRoles = claims[claimMap.roles]
   const roles = Array.isArray(rawRoles)
     ? rawRoles.map(String)
     : rawRoles
@@ -379,8 +388,8 @@ export function mapDefraIdClaimsToProfile(claims) {
 
   return {
     subject: String(subject),
-    contactId: String(claims.contactId || ''),
-    email: String(claims.email || ''),
+    contactId: String(claims[claimMap.contactId] || ''),
+    email: String(claims[claimMap.email] || ''),
     firstName,
     lastName,
     name,
@@ -389,7 +398,7 @@ export function mapDefraIdClaimsToProfile(claims) {
     organisations,
     roles,
     role: 'applicant',
-    sessionId: String(claims.sid || ''),
+    sessionId: String(claims[claimMap.sessionId] || ''),
     claims
   }
 }

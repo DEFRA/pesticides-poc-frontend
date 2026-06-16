@@ -274,6 +274,65 @@ export const config = convict({
         format: String,
         default: '/',
         env: 'DEFRA_ID_SIGN_OUT_REDIRECT_URL'
+      },
+      // Claim contract: the exact token claim names to read. Defaults match the
+      // prototype's assumed contract; override per env if the live Defra Identity
+      // token uses different names (no code change needed).
+      claims: {
+        sub: {
+          doc: 'Claim holding the stable person id (subject)',
+          format: String,
+          default: 'sub',
+          env: 'DEFRA_ID_CLAIM_SUB'
+        },
+        email: {
+          doc: 'Claim holding the email address',
+          format: String,
+          default: 'email',
+          env: 'DEFRA_ID_CLAIM_EMAIL'
+        },
+        firstName: {
+          doc: 'Claim holding the first name',
+          format: String,
+          default: 'firstName',
+          env: 'DEFRA_ID_CLAIM_FIRST_NAME'
+        },
+        lastName: {
+          doc: 'Claim holding the last name',
+          format: String,
+          default: 'lastName',
+          env: 'DEFRA_ID_CLAIM_LAST_NAME'
+        },
+        contactId: {
+          doc: 'Claim holding the contact id',
+          format: String,
+          default: 'contactId',
+          env: 'DEFRA_ID_CLAIM_CONTACT_ID'
+        },
+        currentRelationshipId: {
+          doc: 'Claim holding the currently-selected organisation/relationship id',
+          format: String,
+          default: 'currentRelationshipId',
+          env: 'DEFRA_ID_CLAIM_CURRENT_RELATIONSHIP_ID'
+        },
+        relationships: {
+          doc: 'Claim holding the list of person↔organisation relationships',
+          format: String,
+          default: 'relationships',
+          env: 'DEFRA_ID_CLAIM_RELATIONSHIPS'
+        },
+        roles: {
+          doc: 'Claim holding the IdP roles list',
+          format: String,
+          default: 'roles',
+          env: 'DEFRA_ID_CLAIM_ROLES'
+        },
+        sessionId: {
+          doc: 'Claim holding the IdP session id',
+          format: String,
+          default: 'sid',
+          env: 'DEFRA_ID_CLAIM_SID'
+        }
       }
     },
     // Internal case officers / staff -> Microsoft Entra ID. The agreed production

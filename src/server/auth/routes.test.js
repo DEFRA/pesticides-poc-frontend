@@ -1,3 +1,5 @@
+import { config } from '#/config/config.js'
+
 import { createServer } from '#/server/server.js'
 import { statusCodes } from '#/server/common/constants/status-codes.js'
 
@@ -140,5 +142,77 @@ describe('#auth sign-in flows (mock mode)', () => {
     })
     expect(account.statusCode).toBe(statusCodes.redirect)
     expect(account.headers.location).toContain('/auth/defra-id/sign-in')
+  })
+})
+
+describe('#organisation re-selection', () => {
+  test('redirects an unauthenticated user to the applicant sign-in', async () => {
+    const { statusCode, headers } = await server.inject({
+      method: 'GET',
+      url: '/auth/defra-id/organisation'
+    })
+    expect(statusCode).toBe(statusCodes.redirect)
+    expect(headers.location).toContain('/auth/defra-id/sign-in')
+  })
+
+  test('re-runs sign-in for an authenticated applicant', async () => {
+    const start = await server.inject({
+      method: 'GET',
+      url: '/auth/defra-id/start'
+    })
+    const cookie = cookieFrom(start)
+    const callback = await server.inject({
+      method: 'GET',
+      url: start.headers.location,
+      headers: { cookie }
+    })
+    const sessionCookie = cookieFrom(callback) || cookie
+
+    const reselect = await server.inject({
+      method: 'GET',
+      url: '/auth/defra-id/organisation',
+      headers: { cookie: sessionCookie }
+    })
+    expect(reselect.statusCode).toBe(statusCodes.redirect)
+    expect(reselect.headers.location).toContain('/auth/defra-id/callback')
+  })
+})
+
+describe('#Defra Identity sign-in page (live mode)', () => {
+  afterEach(() => {
+    config.set('auth.defraId.mode', 'mock')
+  })
+
+  test('confirms "Live mode is enabled" when fully configured', async () => {
+    config.set('auth.defraId.mode', 'live')
+    config.set(
+      'auth.defraId.wellKnownUrl',
+      'https://b2c.example/.well-known/openid-configuration'
+    )
+    config.set('auth.defraId.clientId', 'client-123')
+    config.set('auth.defraId.clientSecret', 'secret-xyz')
+    config.set('auth.defraId.serviceId', 'svc-1')
+    config.set('auth.defraId.policy', 'b2c_1a_signin')
+
+    const { statusCode, result } = await server.inject({
+      method: 'GET',
+      url: '/auth/defra-id/sign-in'
+    })
+
+    expect(statusCode).toBe(statusCodes.ok)
+    expect(result).toEqual(expect.stringContaining('Live mode is enabled'))
+    expect(result).toEqual(expect.stringContaining('defra-id-start'))
+  })
+
+  test('warns when live mode is enabled but not fully configured', async () => {
+    config.set('auth.defraId.mode', 'live')
+    config.set('auth.defraId.clientId', '')
+
+    const { result } = await server.inject({
+      method: 'GET',
+      url: '/auth/defra-id/sign-in'
+    })
+
+    expect(result).toEqual(expect.stringContaining('not fully configured'))
   })
 })

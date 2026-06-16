@@ -172,6 +172,29 @@ describe('#mapDefraIdClaimsToProfile', () => {
   test('throws 422 when the subject claim is missing', () => {
     expect(() => mapDefraIdClaimsToProfile({})).toThrow(/subject claim/)
   })
+
+  test('honours configured DEFRA_ID_CLAIM_* names', () => {
+    config.set('auth.defraId.claims.sub', 'oid')
+    config.set('auth.defraId.claims.currentRelationshipId', 'orgId')
+    config.set('auth.defraId.claims.relationships', 'orgs')
+
+    const profile = mapDefraIdClaimsToProfile({
+      oid: 'subject-from-oid',
+      orgId: 'rel-7',
+      orgs: ['rel-7:org-7:Org Seven:::']
+    })
+
+    expect(profile.subject).toBe('subject-from-oid')
+    expect(profile.organisationId).toBe('rel-7')
+    expect(profile.organisations[0].organisationName).toBe('Org Seven')
+
+    config.set('auth.defraId.claims.sub', 'sub')
+    config.set(
+      'auth.defraId.claims.currentRelationshipId',
+      'currentRelationshipId'
+    )
+    config.set('auth.defraId.claims.relationships', 'relationships')
+  })
 })
 
 describe('#completeLiveDefraId', () => {
