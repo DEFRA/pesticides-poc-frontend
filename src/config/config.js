@@ -214,6 +214,122 @@ export const config = convict({
       default: 'x-cdp-request-id',
       env: 'TRACING_HEADER'
     }
+  },
+  auth: {
+    // External applicants -> Defra Customer Identity (Azure AD B2C) over OIDC.
+    // See docs/auth/AUTH-ARCHITECTURE.md. `mock` needs no credentials and is the
+    // default so the service runs for demos / user research out of the box.
+    defraId: {
+      mode: {
+        doc: 'Defra Identity auth mode: mock (local identities) or live (real B2C)',
+        format: ['mock', 'live'],
+        default: 'mock',
+        env: 'DEFRA_ID_AUTH_MODE'
+      },
+      wellKnownUrl: {
+        doc: 'OIDC discovery (well-known) document URL',
+        format: String,
+        default: '',
+        env: 'DEFRA_ID_WELL_KNOWN_URL'
+      },
+      clientId: {
+        doc: 'Registered client id (also sent as an additional scope)',
+        format: String,
+        default: '',
+        env: 'DEFRA_ID_CLIENT_ID'
+      },
+      clientSecret: {
+        doc: 'Confidential-client secret (secure runtime only, never committed)',
+        format: String,
+        default: '',
+        sensitive: true,
+        env: 'DEFRA_ID_CLIENT_SECRET'
+      },
+      serviceId: {
+        doc: 'Defra Identity service id (authorize parameter)',
+        format: String,
+        default: '',
+        env: 'DEFRA_ID_SERVICE_ID'
+      },
+      policy: {
+        doc: 'B2C policy name (authorize parameter `p`)',
+        format: String,
+        default: '',
+        env: 'DEFRA_ID_POLICY'
+      },
+      publicBaseUrl: {
+        doc: 'Public base URL used to build redirect URIs',
+        format: String,
+        default: '',
+        env: 'DEFRA_ID_PUBLIC_BASE_URL'
+      },
+      redirectPath: {
+        doc: 'Callback path registered with the IdP',
+        format: String,
+        default: '/auth/defra-id/callback',
+        env: 'DEFRA_ID_REDIRECT_PATH'
+      },
+      signOutRedirectUrl: {
+        doc: 'Post-logout redirect URL',
+        format: String,
+        default: '/',
+        env: 'DEFRA_ID_SIGN_OUT_REDIRECT_URL'
+      }
+    },
+    // Internal case officers / staff -> Microsoft Entra ID. The agreed production
+    // direction is SAML 2.0 SSO; this OIDC config is interim / reference and is
+    // NOT yet confirmed by the Customer Identity onboarding docs.
+    entra: {
+      mode: {
+        doc: 'Entra ID auth mode: mock or live',
+        format: ['mock', 'live'],
+        default: 'mock',
+        env: 'ENTRA_AUTH_MODE'
+      },
+      tenantId: {
+        doc: 'Entra tenant id (OIDC endpoints derived from the tenant authority)',
+        format: String,
+        default: '',
+        env: 'ENTRA_TENANT_ID'
+      },
+      clientId: {
+        doc: 'Entra application (client) id',
+        format: String,
+        default: '',
+        env: 'ENTRA_CLIENT_ID'
+      },
+      clientSecret: {
+        doc: 'Entra client secret (secure runtime only)',
+        format: String,
+        default: '',
+        sensitive: true,
+        env: 'ENTRA_CLIENT_SECRET'
+      },
+      publicBaseUrl: {
+        doc: 'Public base URL used to build redirect URIs',
+        format: String,
+        default: '',
+        env: 'ENTRA_PUBLIC_BASE_URL'
+      },
+      redirectPath: {
+        doc: 'Callback path registered with Entra',
+        format: String,
+        default: '/auth/entra/callback',
+        env: 'ENTRA_REDIRECT_PATH'
+      },
+      signOutRedirectUrl: {
+        doc: 'Post-logout redirect URL',
+        format: String,
+        default: '/',
+        env: 'ENTRA_SIGN_OUT_REDIRECT_URL'
+      },
+      caseOfficerRoleValue: {
+        doc: 'Entra app role value that maps to the case-officer role',
+        format: String,
+        default: 'case_officer',
+        env: 'ENTRA_CASE_OFFICER_ROLE_VALUE'
+      }
+    }
   }
 })
 
