@@ -39,7 +39,8 @@ export function getDefraIdSummary(request) {
 export async function startDefraIdSignIn(request, options = {}) {
   const summary = getDefraIdSummary(request)
   const session = getAuthSession(request)
-  session.returnTo = options.returnTo || session.returnTo || PAGE_PATHS.ACCOUNT
+  session.returnTo =
+    options.returnTo || session.returnTo || PAGE_PATHS.REGISTER_TYPE
 
   if (!summary.isLive) {
     const identity =
@@ -100,7 +101,7 @@ export async function completeDefraIdCallback(request, query = {}) {
       profile,
       mode: 'mock'
     })
-    return { returnTo: session.returnTo || PAGE_PATHS.ACCOUNT, profile }
+    return { returnTo: session.returnTo || PAGE_PATHS.REGISTER_TYPE, profile }
   }
 
   const result = await completeLiveDefraId(
@@ -126,7 +127,7 @@ export async function completeDefraIdCallback(request, query = {}) {
   })
 
   return {
-    returnTo: result.returnTo || PAGE_PATHS.ACCOUNT,
+    returnTo: result.returnTo || PAGE_PATHS.REGISTER_TYPE,
     profile: result.profile
   }
 }

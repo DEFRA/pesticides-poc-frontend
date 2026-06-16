@@ -57,7 +57,9 @@ export function buildAuthDefaults() {
     token: '',
     refreshToken: '',
     idTokenHint: '',
-    returnTo: PAGE_PATHS.ACCOUNT
+    // Empty by default so each provider's start picks its own home page; the
+    // guards override it with the attempted URL for deep-link returnTo.
+    returnTo: ''
   }
 }
 
@@ -124,8 +126,9 @@ export function resolvePostLoginRedirect(role, returnTo) {
     return isAdminPath ? target : PAGE_PATHS.ADMIN_APPLICATIONS
   }
 
-  // Applicants must never be dropped onto case-officer-only (admin) pages.
-  return target && !isAdminPath ? target : PAGE_PATHS.ACCOUNT
+  // Applicants land in the registration journey, never on case-officer-only
+  // (admin) pages.
+  return target && !isAdminPath ? target : PAGE_PATHS.REGISTER_TYPE
 }
 
 // Apply an authenticated profile to the session. Role + scope come from the

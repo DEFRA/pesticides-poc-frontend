@@ -55,13 +55,15 @@ function fakeH() {
 }
 
 describe('#resolvePostLoginRedirect', () => {
-  test('applicants default to the account page', () => {
-    expect(resolvePostLoginRedirect('applicant', '')).toBe(PAGE_PATHS.ACCOUNT)
+  test('applicants default to the registration journey', () => {
+    expect(resolvePostLoginRedirect('applicant', '')).toBe(
+      PAGE_PATHS.REGISTER_TYPE
+    )
   })
 
   test('applicants are kept off admin (case-officer) pages', () => {
     expect(resolvePostLoginRedirect('applicant', '/admin/applications')).toBe(
-      PAGE_PATHS.ACCOUNT
+      PAGE_PATHS.REGISTER_TYPE
     )
   })
 
@@ -91,7 +93,7 @@ describe('#resolvePostLoginRedirect', () => {
 
   test('blocks open-redirect (protocol-relative) returnTo', () => {
     expect(resolvePostLoginRedirect('applicant', '//evil.example.com')).toBe(
-      PAGE_PATHS.ACCOUNT
+      PAGE_PATHS.REGISTER_TYPE
     )
   })
 })

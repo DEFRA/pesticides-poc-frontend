@@ -37,7 +37,8 @@ export function getEntraSummary(request) {
 export async function startEntraSignIn(request, options = {}) {
   const summary = getEntraSummary(request)
   const session = getAuthSession(request)
-  session.returnTo = options.returnTo || session.returnTo || PAGE_PATHS.ACCOUNT
+  session.returnTo =
+    options.returnTo || session.returnTo || PAGE_PATHS.ADMIN_APPLICATIONS
 
   if (!summary.isLive) {
     session.pendingState = `mock-entra-${Date.now()}`
@@ -92,7 +93,10 @@ export async function completeEntraCallback(request, query = {}) {
       profile,
       mode: 'mock'
     })
-    return { returnTo: session.returnTo || PAGE_PATHS.ACCOUNT, profile }
+    return {
+      returnTo: session.returnTo || PAGE_PATHS.ADMIN_APPLICATIONS,
+      profile
+    }
   }
 
   const result = await completeLiveEntra(
@@ -118,7 +122,7 @@ export async function completeEntraCallback(request, query = {}) {
   })
 
   return {
-    returnTo: result.returnTo || PAGE_PATHS.ACCOUNT,
+    returnTo: result.returnTo || PAGE_PATHS.ADMIN_APPLICATIONS,
     profile: result.profile
   }
 }

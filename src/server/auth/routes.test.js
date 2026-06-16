@@ -58,7 +58,7 @@ describe('#auth sign-in pages (mock mode)', () => {
 })
 
 describe('#auth sign-in flows (mock mode)', () => {
-  test('Defra Identity mock sign-in completes end-to-end and lands on the account page', async () => {
+  test('Defra Identity mock sign-in completes end-to-end and lands on the registration journey', async () => {
     const start = await server.inject({
       method: 'GET',
       url: '/auth/defra-id/start'
@@ -75,15 +75,24 @@ describe('#auth sign-in flows (mock mode)', () => {
       headers: { cookie }
     })
     expect(callback.statusCode).toBe(statusCodes.redirect)
-    expect(callback.headers.location).toBe('/auth/account')
+    expect(callback.headers.location).toBe('/register/type')
+
+    const sessionCookie = cookieFrom(callback) || cookie
+
+    const register = await server.inject({
+      method: 'GET',
+      url: '/register/type',
+      headers: { cookie: sessionCookie }
+    })
+    expect(register.statusCode).toBe(statusCodes.ok)
+    expect(register.result).toEqual(expect.stringContaining('Alex Grower'))
 
     const account = await server.inject({
       method: 'GET',
       url: '/auth/account',
-      headers: { cookie: cookieFrom(callback) || cookie }
+      headers: { cookie: sessionCookie }
     })
     expect(account.statusCode).toBe(statusCodes.ok)
-    expect(account.result).toEqual(expect.stringContaining('Alex Grower'))
     expect(account.result).toEqual(expect.stringContaining('Grower Farms Ltd'))
   })
 
@@ -269,5 +278,37 @@ describe('#admin applications (case-officer guard)', () => {
       headers: { cookie: sessionCookie }
     })
     expect(admin.statusCode).toBe(statusCodes.notFound)
+  })
+})
+
+describe('#register journey (applicant guard)', () => {
+  test('redirects an unauthenticated user to the applicant sign-in', async () => {
+    const { statusCode, headers } = await server.inject({
+      method: 'GET',
+      url: '/register/type'
+    })
+    expect(statusCode).toBe(statusCodes.redirect)
+    expect(headers.location).toContain('/auth/defra-id/sign-in')
+  })
+
+  test('404s a case officer who is not an applicant', async () => {
+    const start = await server.inject({
+      method: 'GET',
+      url: '/auth/entra/start'
+    })
+    const cookie = cookieFrom(start)
+    const callback = await server.inject({
+      method: 'GET',
+      url: start.headers.location,
+      headers: { cookie }
+    })
+    const sessionCookie = cookieFrom(callback) || cookie
+
+    const register = await server.inject({
+      method: 'GET',
+      url: '/register/type',
+      headers: { cookie: sessionCookie }
+    })
+    expect(register.statusCode).toBe(statusCodes.notFound)
   })
 })
