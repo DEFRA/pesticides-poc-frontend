@@ -1,9 +1,8 @@
 // Microsoft Entra ID OIDC client — INTERNAL case officers / staff.
 //
 // Ported from prototype-legacy app/services/entra-id-client.js (Express, CJS) to
-// ESM. Framework-agnostic: depends only on node:crypto + fetch. The only change is
-// that the Express `req` (used to derive a base URL) is replaced by an explicit
-// `baseUrl` string passed in by the Hapi route layer.
+// ESM. Framework-agnostic: node:crypto + fetch only (shared plumbing in
+// ../oidc-common.js). The Express `req` is replaced by an explicit `baseUrl` string.
 //
 // Authorization-code flow against Entra ID v2.0, endpoints discovered from the
 // tenant well-known URL, PKCE (S256) + state + nonce, claim map
@@ -11,14 +10,24 @@
 // JWKS signature verification is a documented follow-up (state/nonce/expiry are
 // checked); production direction is SAML 2.0.
 
-import { createHash, randomBytes, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 
 import { config } from '#/config/config.js'
 
-const HTTP_UNPROCESSABLE_ENTITY = 422
-const PKCE_VERIFIER_BYTES = 48
+import {
+  HTTP_UNPROCESSABLE_ENTITY,
+  buildDisplayName,
+  createHttpError,
+  createPkcePair,
+  decodeJwtPayload,
+  exchangeCodeForTokens,
+  firstNonEmpty,
+  loadDiscovery,
+  resolveUrl,
+  toStringArray
+} from '../oidc-common.js'
 
-let cachedDiscovery = null
+const discoveryCache = {}
 
 // Shape the convict `auth.entra` block into the fields this client expects,
 // deriving the tenant authority / discovery URL and the fixed OIDC parameters.
@@ -47,112 +56,22 @@ export function getEntraIdConfig() {
   }
 }
 
-function createHttpError(statusCode, message, details = []) {
-  const error = new Error(message)
-  error.statusCode = statusCode
-  error.details = details
-  return error
-}
-
-function toBase64Url(value) {
-  return Buffer.from(value)
-    .toString('base64')
-    .replaceAll('=', '')
-    .replaceAll('+', '-')
-    .replaceAll('/', '_')
-}
-
-function fromBase64Url(value) {
-  const normalised = value.replaceAll('-', '+').replaceAll('_', '/')
-  const padLength = normalised.length % 4
-  const padded = padLength ? normalised + '='.repeat(4 - padLength) : normalised
-  return Buffer.from(padded, 'base64').toString('utf8')
-}
-
-function createPkcePair() {
-  const codeVerifier = toBase64Url(randomBytes(PKCE_VERIFIER_BYTES))
-  const codeChallenge = createHash('sha256')
-    .update(codeVerifier)
-    .digest('base64')
-    .replaceAll('=', '')
-    .replaceAll('+', '-')
-    .replaceAll('/', '_')
-
-  return { codeVerifier, codeChallenge }
-}
-
-function resolveUrl(baseUrl, value) {
-  if (!value) {
-    return ''
-  }
-
-  if (/^https?:\/\//i.test(value)) {
-    return value
-  }
-
-  const base = (baseUrl || '').replace(/\/$/, '')
-  return base ? new URL(value, `${base}/`).toString() : value
-}
-
-async function parseJsonSafe(response) {
-  const text = await response.text()
-  if (!text) {
-    return {}
-  }
-
-  const contentType = response.headers.get('content-type') || ''
-  if (!contentType.includes('application/json')) {
-    return { raw: text }
-  }
-
-  return JSON.parse(text)
-}
-
-function decodeJwtPayload(token) {
-  if (!token || typeof token !== 'string') {
-    return {}
-  }
-
-  const segments = token.split('.')
-  if (segments.length < 2) {
-    return {}
-  }
-
-  return JSON.parse(fromBase64Url(segments[1]))
-}
-
 // OIDC discovery: fetch and cache the tenant endpoints from the well-known URL.
 async function getEntraOidcConfig() {
-  const entraConfig = getEntraIdConfig()
+  const { wellKnownUrl } = getEntraIdConfig()
 
-  if (!entraConfig.wellKnownUrl) {
+  if (!wellKnownUrl) {
     throw createHttpError(
       HTTP_UNPROCESSABLE_ENTITY,
       'ENTRA_TENANT_ID is not configured (no discovery URL)'
     )
   }
 
-  if (cachedDiscovery?.wellKnownUrl === entraConfig.wellKnownUrl) {
-    return cachedDiscovery.document
-  }
-
-  const response = await fetch(entraConfig.wellKnownUrl, {
-    headers: { Accept: 'application/json' }
-  })
-
-  const document = await parseJsonSafe(response)
-
-  if (!response.ok) {
-    throw createHttpError(
-      response.status,
-      document.error_description ||
-        document.error ||
-        'Unable to load Microsoft Entra discovery document'
-    )
-  }
-
-  cachedDiscovery = { wellKnownUrl: entraConfig.wellKnownUrl, document }
-  return document
+  return loadDiscovery(
+    wellKnownUrl,
+    discoveryCache,
+    'Unable to load Microsoft Entra discovery document'
+  )
 }
 
 function getMissingLiveConfig(entraConfig) {
@@ -245,82 +164,9 @@ export async function startLiveEntra(baseUrl, options = {}) {
   return result
 }
 
-function buildTokenRequestBody(entraConfig, params) {
-  const body = new URLSearchParams({
-    client_id: entraConfig.clientId,
-    ...params
-  })
-  if (entraConfig.clientSecret) {
-    body.set('client_secret', entraConfig.clientSecret)
-  }
-  return body
-}
-
-function throwIfResponseNotOk(response, payload, fallbackMessage) {
-  if (response.ok) {
-    return
-  }
-
-  throw createHttpError(
-    response.status,
-    payload.error_description || payload.error || fallbackMessage
-  )
-}
-
-function normaliseTokenResponse(payload) {
-  return {
-    accessToken: payload.access_token || '',
-    idToken: payload.id_token || '',
-    refreshToken: payload.refresh_token || '',
-    tokenType: payload.token_type || '',
-    expiresIn: payload.expires_in || 0
-  }
-}
-
-async function exchangeCodeForTokens(
-  entraConfig,
-  code,
-  redirectUri,
-  codeVerifier
-) {
-  const { token_endpoint: tokenEndpoint } = await getEntraOidcConfig()
-
-  const params = {
-    grant_type: 'authorization_code',
-    code,
-    redirect_uri: redirectUri
-  }
-
-  if (entraConfig.usePkce && codeVerifier) {
-    params.code_verifier = codeVerifier
-  }
-
-  const response = await fetch(tokenEndpoint, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/x-www-form-urlencoded'
-    },
-    body: buildTokenRequestBody(entraConfig, params).toString()
-  })
-
-  const payload = await parseJsonSafe(response)
-  throwIfResponseNotOk(response, payload, 'Entra token exchange failed')
-
-  return normaliseTokenResponse(payload)
-}
-
-function readRoles(claims) {
-  const rawRoles = claims.roles
-  if (Array.isArray(rawRoles)) {
-    return rawRoles.map(String)
-  }
-  return rawRoles ? [String(rawRoles)] : []
-}
-
 // Map standard Entra ID v2.0 claims to the prototype's staff profile shape.
 export function mapEntraClaimsToProfile(claims, entraConfig) {
-  const subject = claims.oid || claims.sub
+  const subject = firstNonEmpty(claims.oid, claims.sub)
   if (!subject) {
     throw createHttpError(
       HTTP_UNPROCESSABLE_ENTITY,
@@ -330,27 +176,22 @@ export function mapEntraClaimsToProfile(claims, entraConfig) {
 
   const firstName = String(claims.given_name || '')
   const lastName = String(claims.family_name || '')
-  const name = String(claims.name || '') || `${firstName} ${lastName}`.trim()
-  const roles = readRoles(claims)
-
+  const roles = toStringArray(claims.roles)
   const caseOfficerValue = String(
     entraConfig.roles.caseOfficerValue || 'case_officer'
   )
-  const hasCaseOfficerRole = roles.some(
-    (value) => value.toLowerCase() === caseOfficerValue.toLowerCase()
-  )
 
   return {
-    subject: String(subject),
-    email: String(
-      claims.email || claims.preferred_username || claims.upn || ''
-    ),
+    subject,
+    email: firstNonEmpty(claims.email, claims.preferred_username, claims.upn),
     firstName,
     lastName,
-    name,
+    name: buildDisplayName(firstName, lastName, claims.name),
     roles,
     role: 'case_officer',
-    hasCaseOfficerRole,
+    hasCaseOfficerRole: roles.some(
+      (value) => value.toLowerCase() === caseOfficerValue.toLowerCase()
+    ),
     sessionId: String(claims.sid || ''),
     claims
   }
@@ -373,8 +214,15 @@ export async function completeLiveEntra(callback, sessionState) {
     )
   }
 
+  const { token_endpoint: tokenEndpoint } = await getEntraOidcConfig()
   const tokens = await exchangeCodeForTokens(
-    entraConfig,
+    {
+      tokenEndpoint,
+      clientId: entraConfig.clientId,
+      clientSecret: entraConfig.clientSecret,
+      usePkce: entraConfig.usePkce,
+      errorMessage: 'Entra token exchange failed'
+    },
     callback.code,
     sessionState.redirectUri,
     sessionState.pkceVerifier

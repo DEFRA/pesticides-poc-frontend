@@ -4,9 +4,9 @@
 // service run for demos and UCD / user research. The applicant carries two
 // organisations to exercise the org/relationship-selection journey.
 //
-// TODO(enrolment): model enrolment states (Pending / Approved / Blocked /
-// Offboarded) here so user research can cover the traditional-enrolment gate
-// (see docs/auth/AUTH-ARCHITECTURE.md §3).
+// Future work: enrolment states (Pending / Approved / Blocked / Offboarded) are
+// not modelled here yet — needed so user research can cover the traditional-
+// enrolment gate (see docs/auth/AUTH-ARCHITECTURE.md §3).
 
 export function buildMockDefraIdIdentity(identity) {
   if (identity === 'case_officer') {
