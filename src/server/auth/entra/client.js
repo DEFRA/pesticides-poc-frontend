@@ -16,19 +16,20 @@ import { config } from '#/config/config.js'
 
 import {
   HTTP_UNPROCESSABLE_ENTITY,
-  assertTokenClaims,
   buildDisplayName,
   createHttpError,
   createPkcePair,
-  decodeJwtPayload,
   exchangeCodeForTokens,
   firstNonEmpty,
   loadDiscovery,
+  loadJwks,
   resolveUrl,
-  toStringArray
+  toStringArray,
+  verifyIdToken
 } from '../oidc-common.js'
 
 const discoveryCache = {}
+const jwksCache = {}
 
 // Shape the convict `auth.entra` block into the fields this client expects,
 // deriving the tenant authority / discovery URL and the fixed OIDC parameters.
@@ -221,10 +222,10 @@ export async function completeLiveEntra(callback, sessionState) {
     )
   }
 
-  const { token_endpoint: tokenEndpoint } = await getEntraOidcConfig()
+  const discovery = await getEntraOidcConfig()
   const tokens = await exchangeCodeForTokens(
     {
-      tokenEndpoint,
+      tokenEndpoint: discovery.token_endpoint,
       clientId: entraConfig.clientId,
       clientSecret: entraConfig.clientSecret,
       usePkce: entraConfig.usePkce,
@@ -235,12 +236,20 @@ export async function completeLiveEntra(callback, sessionState) {
     sessionState.pkceVerifier
   )
 
-  // Identity comes from the ID token only; the access token is an opaque bearer
-  // credential for resource servers and must not be trusted for identity claims.
-  const claims = decodeJwtPayload(tokens.idToken)
-
-  // Mandatory nonce + expiry checks (shared with the Defra Identity client).
-  assertTokenClaims(claims, sessionState, 'Microsoft Entra')
+  // Identity comes from the ID token only (the access token is an opaque bearer
+  // credential). Verify its signature against the tenant JWKS and validate the
+  // standard claims (issuer, audience, expiry, nonce) before trusting any of them.
+  const jwks = await loadJwks(
+    discovery.jwks_uri,
+    jwksCache,
+    'Unable to load Microsoft Entra JWKS'
+  )
+  const claims = verifyIdToken(tokens.idToken, {
+    jwks,
+    issuer: discovery.issuer,
+    audience: entraConfig.clientId,
+    nonce: sessionState.nonce
+  })
 
   const profile = mapEntraClaimsToProfile(claims, entraConfig)
 

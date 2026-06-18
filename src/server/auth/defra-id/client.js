@@ -21,20 +21,21 @@ import { config } from '#/config/config.js'
 
 import {
   HTTP_UNPROCESSABLE_ENTITY,
-  assertTokenClaims,
   buildDisplayName,
   createHttpError,
   createPkcePair,
-  decodeJwtPayload,
   exchangeCodeForTokens,
   loadDiscovery,
+  loadJwks,
   resolveUrl,
-  toStringArray
+  toStringArray,
+  verifyIdToken
 } from '../oidc-common.js'
 
 // In-process discovery cache (POC). See loadDiscovery in ../oidc-common.js for the
 // post-POC caveats (no TTL, per-pod, vs the project's Redis/catbox caching).
 const discoveryCache = {}
+const jwksCache = {}
 
 export function getDefraIdConfig() {
   const raw = config.get('auth.defraId')
@@ -285,10 +286,10 @@ export async function completeLiveDefraId(callback, sessionState) {
     )
   }
 
-  const { token_endpoint: tokenEndpoint } = await getDefraIdOidcConfig()
+  const discovery = await getDefraIdOidcConfig()
   const tokens = await exchangeCodeForTokens(
     {
-      tokenEndpoint,
+      tokenEndpoint: discovery.token_endpoint,
       clientId: defraIdConfig.clientId,
       clientSecret: defraIdConfig.clientSecret,
       usePkce: defraIdConfig.usePkce,
@@ -299,12 +300,20 @@ export async function completeLiveDefraId(callback, sessionState) {
     sessionState.pkceVerifier
   )
 
-  // Identity comes from the ID token only; the access token is an opaque bearer
-  // credential for resource servers and must not be trusted for identity claims.
-  const claims = decodeJwtPayload(tokens.idToken)
-
-  // Mandatory nonce + expiry checks (shared with the Entra client).
-  assertTokenClaims(claims, sessionState, 'Defra Identity')
+  // Identity comes from the ID token only (the access token is an opaque bearer
+  // credential). Verify its signature against the provider JWKS and validate the
+  // standard claims (issuer, audience, expiry, nonce) before trusting any of them.
+  const jwks = await loadJwks(
+    discovery.jwks_uri,
+    jwksCache,
+    'Unable to load Defra Identity JWKS'
+  )
+  const claims = verifyIdToken(tokens.idToken, {
+    jwks,
+    issuer: discovery.issuer,
+    audience: defraIdConfig.clientId,
+    nonce: sessionState.nonce
+  })
 
   const profile = mapDefraIdClaimsToProfile(claims)
 

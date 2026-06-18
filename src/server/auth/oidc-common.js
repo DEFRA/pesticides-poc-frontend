@@ -2,10 +2,25 @@
 // Framework-agnostic: node:crypto + fetch only. Extracted so the two clients don't
 // duplicate the auth-code/PKCE/discovery/token plumbing.
 
-import { createHash, randomBytes } from 'node:crypto'
+import {
+  createHash,
+  createPublicKey,
+  createVerify,
+  randomBytes
+} from 'node:crypto'
 
 export const HTTP_UNPROCESSABLE_ENTITY = 422
+export const HTTP_UNAUTHORIZED = 401
 const PKCE_VERIFIER_BYTES = 48
+const DEFAULT_CLOCK_TOLERANCE_SEC = 60
+const MS_PER_SEC = 1000
+
+// JWT `alg` -> Node verify algorithm. RSA only (Entra/B2C sign ID tokens with RS256).
+const JWT_ALG_TO_HASH = {
+  RS256: 'RSA-SHA256',
+  RS384: 'RSA-SHA384',
+  RS512: 'RSA-SHA512'
+}
 
 export function createHttpError(statusCode, message, details = []) {
   const error = new Error(message)
@@ -69,27 +84,6 @@ export function decodeJwtPayload(token) {
   }
 
   return JSON.parse(fromBase64Url(segments[1]))
-}
-
-// Enforce the mandatory replay/expiry claims on a decoded ID token, shared by both
-// identity clients. The nonce must be present AND match the value we issued (a token
-// that omits nonce must not pass), and the token must not be expired. NOTE: RS256/JWKS
-// signature verification plus `iss`/`aud` checks are the EQ-256 hardening follow-up;
-// only nonce and expiry are enforced here.
-export function assertTokenClaims(claims, sessionState, providerLabel) {
-  if (!claims.nonce || claims.nonce !== sessionState?.nonce) {
-    throw createHttpError(
-      HTTP_UNPROCESSABLE_ENTITY,
-      `${providerLabel} nonce validation failed in callback`
-    )
-  }
-
-  if (!claims.exp || claims.exp * 1000 <= Date.now()) {
-    throw createHttpError(
-      HTTP_UNPROCESSABLE_ENTITY,
-      `${providerLabel} token has expired`
-    )
-  }
 }
 
 // First defined, non-empty value as a string (used for claim fallbacks).
@@ -197,4 +191,116 @@ export async function exchangeCodeForTokens(
   }
 
   return normaliseTokenResponse(payload)
+}
+
+// --- ID token verification (JWKS signature + standard claims) ---------------
+
+// Load the provider JWKS (its `keys` array), cached per-URI like discovery.
+export async function loadJwks(jwksUri, cache, errorMessage) {
+  const document = await loadDiscovery(jwksUri, cache, errorMessage)
+  return Array.isArray(document.keys) ? document.keys : []
+}
+
+function selectSigningKey(jwks, header) {
+  const keys = jwks || []
+  // When the token names a key id, it must match; only fall back to a sole key
+  // if the token carries no kid at all.
+  if (header.kid) {
+    return keys.find((key) => key.kid === header.kid) || null
+  }
+  return keys.length === 1 ? keys[0] : null
+}
+
+// Verify the RSA signature over `<header>.<payload>` using the matching JWK.
+function verifyJwtSignature(signingInput, signatureB64, header, jwks) {
+  const hashAlgorithm = JWT_ALG_TO_HASH[header.alg]
+  if (!hashAlgorithm) {
+    throw createHttpError(
+      HTTP_UNAUTHORIZED,
+      `Unsupported ID token algorithm: ${header.alg}`
+    )
+  }
+
+  const jwk = selectSigningKey(jwks, header)
+  if (!jwk) {
+    throw createHttpError(
+      HTTP_UNAUTHORIZED,
+      'No matching JWKS key for ID token'
+    )
+  }
+
+  const publicKey = createPublicKey({ key: jwk, format: 'jwk' })
+  const verifier = createVerify(hashAlgorithm)
+  verifier.update(signingInput)
+  verifier.end()
+
+  if (!verifier.verify(publicKey, Buffer.from(signatureB64, 'base64url'))) {
+    throw createHttpError(
+      HTTP_UNAUTHORIZED,
+      'ID token signature verification failed'
+    )
+  }
+}
+
+// Validate the standard ID token claims (issuer, audience, expiry, nonce).
+function assertIdTokenClaims(claims, options) {
+  const { issuer, audience, nonce, now, clockToleranceSec } = options
+  const nowSec = Math.floor(now / MS_PER_SEC)
+  const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud]
+
+  if (issuer && claims.iss !== issuer) {
+    throw createHttpError(HTTP_UNAUTHORIZED, 'ID token issuer mismatch')
+  }
+  if (audience && !audiences.includes(audience)) {
+    throw createHttpError(HTTP_UNAUTHORIZED, 'ID token audience mismatch')
+  }
+  if (
+    typeof claims.exp === 'number' &&
+    nowSec > claims.exp + clockToleranceSec
+  ) {
+    throw createHttpError(HTTP_UNAUTHORIZED, 'ID token has expired')
+  }
+  if (
+    typeof claims.iat === 'number' &&
+    claims.iat > nowSec + clockToleranceSec
+  ) {
+    throw createHttpError(HTTP_UNAUTHORIZED, 'ID token issued in the future')
+  }
+  if (nonce && claims.nonce !== nonce) {
+    throw createHttpError(HTTP_UNAUTHORIZED, 'ID token nonce validation failed')
+  }
+}
+
+// Verify an ID token end-to-end: RSA signature against the JWKS, then the
+// standard claims (iss/aud/exp/iat/nonce). Returns the verified payload claims.
+export function verifyIdToken(idToken, options = {}) {
+  if (!idToken || typeof idToken !== 'string') {
+    throw createHttpError(HTTP_UNAUTHORIZED, 'No ID token provided')
+  }
+
+  const segments = idToken.split('.')
+  if (segments.length !== 3) {
+    throw createHttpError(HTTP_UNAUTHORIZED, 'Malformed ID token')
+  }
+
+  const [headerB64, payloadB64, signatureB64] = segments
+  const header = JSON.parse(fromBase64Url(headerB64))
+
+  verifyJwtSignature(
+    `${headerB64}.${payloadB64}`,
+    signatureB64,
+    header,
+    options.jwks
+  )
+
+  const claims = JSON.parse(fromBase64Url(payloadB64))
+  assertIdTokenClaims(claims, {
+    issuer: options.issuer,
+    audience: options.audience,
+    nonce: options.nonce,
+    now: options.now || Date.now(),
+    clockToleranceSec: options.clockToleranceSec ?? DEFAULT_CLOCK_TOLERANCE_SEC
+  })
+
+  return claims
 }
