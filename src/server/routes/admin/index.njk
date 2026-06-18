@@ -3,21 +3,18 @@
 {% block content %}
   {{ appHeading({
     text: heading,
-    caption: "Case officer"
+    caption: t.caption
   }) }}
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
       <p class="govuk-body" data-testid="admin-officer">
-        Signed in as {{ session.name }} ({{ session.roleLabel or session.role }}).
+        {{ t.signedInPrefix }} {{ session.name }} ({{ session.roleLabel or session.role }}).
       </p>
+      <p class="govuk-body">{{ t.placeholder }}</p>
       <p class="govuk-body">
-        The applications list will appear here. This view is a placeholder for the
-        case-officer sign-in POC.
-      </p>
-      <p class="govuk-body">
-        <a class="govuk-link" href="/auth/account">View your account</a>
-        or <a class="govuk-link" href="/auth/sign-out">sign out</a>.
+        <a class="govuk-link" href="/auth/account">{{ t.viewAccount }}</a>
+        {{ t.or }} <a class="govuk-link" href="/auth/sign-out">{{ t.signOut }}</a>.
       </p>
     </div>
   </div>

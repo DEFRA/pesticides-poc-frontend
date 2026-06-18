@@ -11,6 +11,8 @@ import {
   getAuthSession,
   requireAuth
 } from './session.js'
+import { english } from '#/server/data/en/en.js'
+import { LANG_EN } from '#/server/data/constants.js'
 
 const signOut = {
   async handler(request, h) {
@@ -32,9 +34,11 @@ const account = {
     const session = getAuthSession(request)
 
     return h.view('account', {
-      pageTitle: 'Your account',
-      heading: 'You are signed in',
-      session
+      pageTitle: english.account.pageTitle,
+      heading: english.account.heading,
+      t: english.account,
+      session,
+      lang: LANG_EN
     })
   }
 }

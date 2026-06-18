@@ -15,30 +15,30 @@
 
       {{ govukSummaryList({
         rows: [
-          { key: { text: "Name" }, value: { text: session.name } },
-          { key: { text: "Email" }, value: { text: session.email } },
-          { key: { text: "Role" }, value: { text: session.roleLabel or session.role } },
-          { key: { text: "Identity provider" }, value: { text: session.provider } },
-          { key: { text: "Mode" }, value: { text: session.mode } }
+          { key: { text: t.keyName }, value: { text: session.name } },
+          { key: { text: t.keyEmail }, value: { text: session.email } },
+          { key: { text: t.keyRole }, value: { text: session.roleLabel or session.role } },
+          { key: { text: t.keyProvider }, value: { text: session.provider } },
+          { key: { text: t.keyMode }, value: { text: session.mode } }
         ],
         attributes: { "data-testid": "account-summary" }
       }) }}
 
-      <h2 class="govuk-heading-m">Organisations</h2>
+      <h2 class="govuk-heading-m">{{ t.organisationsHeading }}</h2>
       {% if session.organisations.length %}
         <ul class="govuk-list govuk-list--bullet" data-testid="account-organisations">
           {% for org in session.organisations %}
             <li>
               {{ org.organisationName or org.organisationId }}
-              {% if org.relationshipId == session.organisationId %}{{ govukTag({ text: "Current", classes: "govuk-tag--green" }) }}{% endif %}
+              {% if org.relationshipId == session.organisationId %}{{ govukTag({ text: t.currentTag, classes: "govuk-tag--green" }) }}{% endif %}
             </li>
           {% endfor %}
         </ul>
       {% else %}
-        <p class="govuk-body" data-testid="account-organisations">No organisations (internal staff account).</p>
+        <p class="govuk-body" data-testid="account-organisations">{{ t.noOrganisations }}</p>
       {% endif %}
 
-      <h2 class="govuk-heading-m">Permissions (resolved downstream)</h2>
+      <h2 class="govuk-heading-m">{{ t.permissionsHeading }}</h2>
       <ul class="govuk-list govuk-list--bullet" data-testid="account-scope">
         {% for entry in session.scope %}
           <li>{{ entry }}</li>
@@ -46,7 +46,7 @@
       </ul>
 
       {{ govukButton({
-        text: "Sign out",
+        text: t.signOutButton,
         href: "/auth/sign-out",
         classes: "govuk-button--secondary",
         attributes: { "data-testid": "account-sign-out" }
