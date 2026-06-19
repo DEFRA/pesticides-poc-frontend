@@ -328,9 +328,9 @@ export const config = convict({
           env: 'DEFRA_ID_CLAIM_ROLES'
         },
         sessionId: {
-          doc: 'Claim holding the IdP session id',
+          doc: 'Claim holding the IdP session id (Defra Identity uses `sessionId`)',
           format: String,
-          default: 'sid',
+          default: 'sessionId',
           env: 'DEFRA_ID_CLAIM_SID'
         }
       }

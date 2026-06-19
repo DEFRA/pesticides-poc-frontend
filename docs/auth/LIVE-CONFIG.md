@@ -51,7 +51,7 @@ claim names (no code change needed). All non-sensitive.
 | `DEFRA_ID_CLAIM_CURRENT_RELATIONSHIP_ID` | `currentRelationshipId` | selected organisation/relationship id     |
 | `DEFRA_ID_CLAIM_RELATIONSHIPS`           | `relationships`         | list of person↔organisation relationships |
 | `DEFRA_ID_CLAIM_ROLES`                   | `roles`                 | IdP roles list                            |
-| `DEFRA_ID_CLAIM_SID`                     | `sid`                   | IdP session id                            |
+| `DEFRA_ID_CLAIM_SID`                     | `sessionId`             | IdP session id                            |
 
 ---
 
