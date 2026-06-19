@@ -166,14 +166,16 @@ describe('#requireAuth', () => {
     expect(requireAuth(request, fakeH())).toBe(CONTINUE)
   })
 
-  test('redirects to the applicant sign-in (with returnTo stashed) when not authenticated', () => {
+  test('redirects to the neutral sign-in chooser (with returnTo stashed) when not authenticated', () => {
     const request = {
       yar: fakeYar(),
       url: { pathname: '/auth/account', search: '' }
     }
     const result = requireAuth(request, fakeH())
     expect(result.isTakeover).toBe(true)
-    expect(result.url).toContain(PAGE_PATHS.DEFRA_ID_SIGN_IN)
+    // Role-agnostic guard → the chooser, not a specific IdP.
+    expect(result.url).toContain(PAGE_PATHS.SIGN_IN)
+    expect(result.url).not.toContain(PAGE_PATHS.DEFRA_ID_SIGN_IN)
     expect(getAuthSession(request).returnTo).toBe('/auth/account')
   })
 })

@@ -18,6 +18,8 @@ export const DEFRA_ID_PROVIDER = 'defra-customer-identity'
 export const ENTRA_PROVIDER = 'microsoft-entra-id'
 
 export const PAGE_PATHS = {
+  // Neutral chooser for role-agnostic guards (we don't know the population yet).
+  SIGN_IN: '/auth/sign-in',
   DEFRA_ID_SIGN_IN: '/auth/defra-id/sign-in',
   ENTRA_SIGN_IN: '/auth/entra/sign-in',
   SIGN_OUT: '/auth/sign-out',
@@ -191,8 +193,10 @@ export async function applyProfile(
 }
 
 // --- Route guards (Hapi `pre` handlers) ------------------------------------
-// Used by downstream protected routes (e.g. the account page). They stash the
-// attempted URL as returnTo and send each role to its own sign-in.
+// They stash the attempted URL as returnTo and send the visitor to sign in.
+// `requireRole` knows the population so it goes straight to that IdP;
+// `requireAuth` is role-agnostic (e.g. the account page is for either
+// population) so it sends them to the neutral chooser rather than guessing.
 
 export function requireAuth(request, h) {
   const session = getAuthSession(request)
@@ -202,9 +206,7 @@ export function requireAuth(request, h) {
 
   const returnTo = request.url.pathname + (request.url.search || '')
   setAuthSession(request, { ...session, returnTo })
-  return h
-    .redirect(`${PAGE_PATHS.DEFRA_ID_SIGN_IN}?error=auth-required`)
-    .takeover()
+  return h.redirect(`${PAGE_PATHS.SIGN_IN}?error=auth-required`).takeover()
 }
 
 export function requireRole(requiredRole) {

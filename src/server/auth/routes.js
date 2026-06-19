@@ -1,5 +1,6 @@
 // Shared auth routes — provider-agnostic.
 //
+//   GET /auth/sign-in    neutral sign-in chooser (applicant vs case officer)
 //   GET /auth/sign-out   sign out of whichever IdP authenticated the user
 //   GET /auth/account    authenticated "who am I" page (session diagnostic / POC landing)
 
@@ -11,6 +12,18 @@ import {
   getAuthSession,
   requireAuth
 } from './session.js'
+
+// Where requireAuth lands an unauthenticated visitor: we don't yet know whether
+// they're an applicant or a case officer, so offer both rather than guess.
+const signInChooser = {
+  handler(request, h) {
+    return h.view('sign-in', {
+      pageTitle: 'Sign in',
+      heading: 'Sign in',
+      authError: request.query.error || ''
+    })
+  }
+}
 
 const signOut = {
   async handler(request, h) {
@@ -44,6 +57,7 @@ export const sharedAuthRoutes = {
     name: 'auth-shared',
     register(server) {
       server.route([
+        { method: 'GET', path: PAGE_PATHS.SIGN_IN, ...signInChooser },
         { method: 'GET', path: PAGE_PATHS.SIGN_OUT, ...signOut },
         { method: 'GET', path: PAGE_PATHS.ACCOUNT, ...account }
       ])

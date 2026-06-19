@@ -46,14 +46,27 @@ describe('#auth sign-in pages (mock mode)', () => {
     expect(result).toEqual(expect.stringContaining('Mode:'))
   })
 
-  test('an unauthenticated visit to /auth/account redirects to the applicant sign-in', async () => {
+  test('an unauthenticated visit to /auth/account redirects to the neutral sign-in chooser', async () => {
     const { statusCode, headers } = await server.inject({
       method: 'GET',
       url: '/auth/account'
     })
 
     expect(statusCode).toBe(statusCodes.redirect)
-    expect(headers.location).toContain('/auth/defra-id/sign-in')
+    // Role-agnostic page → chooser, not a specific IdP.
+    expect(headers.location).toBe('/auth/sign-in?error=auth-required')
+  })
+
+  test('the sign-in chooser offers both populations', async () => {
+    const { statusCode, result } = await server.inject({
+      method: 'GET',
+      url: '/auth/sign-in?error=auth-required'
+    })
+
+    expect(statusCode).toBe(statusCodes.ok)
+    expect(result).toEqual(expect.stringContaining('choose-applicant'))
+    expect(result).toEqual(expect.stringContaining('choose-case-officer'))
+    expect(result).toEqual(expect.stringContaining('You need to sign in'))
   })
 })
 
@@ -155,7 +168,7 @@ describe('#auth sign-in flows (mock mode)', () => {
       headers: { cookie: cookieFrom(signOut) || sessionCookie }
     })
     expect(account.statusCode).toBe(statusCodes.redirect)
-    expect(account.headers.location).toContain('/auth/defra-id/sign-in')
+    expect(account.headers.location).toContain('/auth/sign-in')
   })
 })
 

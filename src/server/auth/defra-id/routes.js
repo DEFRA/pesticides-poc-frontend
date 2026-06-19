@@ -15,7 +15,7 @@ import {
 import {
   PAGE_PATHS,
   getAuthSession,
-  requireAuth,
+  requireApplicant,
   resolvePostLoginRedirect
 } from '../session.js'
 
@@ -55,10 +55,11 @@ const callback = {
 }
 
 // Organisation/relationship re-selection: re-run sign-in with the B2C org picker
-// forced (cross-service SSO). Requires an authenticated applicant; an optional
-// relationshipId pre-selects an organisation. Mock mode simply re-runs sign-in.
+// forced (cross-service SSO). Applicant-only Defra Identity action (so guarded by
+// requireApplicant, not the role-agnostic requireAuth); an optional relationshipId
+// pre-selects an organisation. Mock mode simply re-runs sign-in.
 const organisation = {
-  options: { pre: [{ method: requireAuth }] },
+  options: { pre: [{ method: requireApplicant }] },
   async handler(request, h) {
     const { returnTo, relationshipId } = request.query
     const { authorizationUrl } = await startDefraIdSignIn(request, {
