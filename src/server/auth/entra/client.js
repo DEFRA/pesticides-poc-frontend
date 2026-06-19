@@ -140,7 +140,9 @@ export async function startLiveEntra(baseUrl, options = {}) {
     client_id: entraConfig.clientId,
     redirect_uri: redirectUri,
     scope: entraConfig.scopes.join(' '),
-    response_mode: 'query',
+    // form_post keeps the code out of the URL/logs; the callback accepts the
+    // code from the POST body.
+    response_mode: 'form_post',
     state,
     nonce
   })

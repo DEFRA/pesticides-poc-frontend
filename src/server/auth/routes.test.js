@@ -111,6 +111,49 @@ describe('#auth sign-in flows (mock mode)', () => {
     expect(account.result).toEqual(expect.stringContaining('Grower Farms Ltd'))
   })
 
+  test('the Defra Identity callback accepts the code via POST (form_post mode)', async () => {
+    const start = await server.inject({
+      method: 'GET',
+      url: '/auth/defra-id/start'
+    })
+    const cookie = cookieFrom(start)
+    const state = new URL(
+      start.headers.location,
+      'http://localhost'
+    ).searchParams.get('state')
+
+    // Live uses response_mode=form_post, so the IdP POSTs the code back.
+    const callback = await server.inject({
+      method: 'POST',
+      url: '/auth/defra-id/callback',
+      headers: { cookie },
+      payload: { code: 'mock-auth-code', state }
+    })
+    expect(callback.statusCode).toBe(statusCodes.redirect)
+    expect(callback.headers.location).toBe('/register/type')
+  })
+
+  test('the Entra callback accepts the code via POST (form_post mode)', async () => {
+    const start = await server.inject({
+      method: 'GET',
+      url: '/auth/entra/start'
+    })
+    const cookie = cookieFrom(start)
+    const state = new URL(
+      start.headers.location,
+      'http://localhost'
+    ).searchParams.get('state')
+
+    const callback = await server.inject({
+      method: 'POST',
+      url: '/auth/entra/callback',
+      headers: { cookie },
+      payload: { code: 'mock-auth-code', state }
+    })
+    expect(callback.statusCode).toBe(statusCodes.redirect)
+    expect(callback.headers.location).toBe('/admin/applications')
+  })
+
   test('Entra mock sign-in authenticates a case officer', async () => {
     const start = await server.inject({
       method: 'GET',

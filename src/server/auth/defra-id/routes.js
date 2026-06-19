@@ -46,10 +46,13 @@ const startSignIn = {
 
 const callback = {
   async handler(request, h) {
-    const { returnTo, profile } = await completeDefraIdCallback(
-      request,
-      request.query
-    )
+    // Live uses response_mode=form_post (code in the POST body); mock redirects
+    // back with query params. Accept whichever is present.
+    const params =
+      request.payload && Object.keys(request.payload).length
+        ? request.payload
+        : request.query
+    const { returnTo, profile } = await completeDefraIdCallback(request, params)
     return h.redirect(resolvePostLoginRedirect(profile.role, returnTo))
   }
 }
@@ -78,7 +81,11 @@ export const defraIdRoutes = {
       server.route([
         { method: 'GET', path: PAGE_PATHS.DEFRA_ID_SIGN_IN, ...signInPage },
         { method: 'GET', path: '/auth/defra-id/start', ...startSignIn },
-        { method: 'GET', path: '/auth/defra-id/callback', ...callback },
+        {
+          method: ['GET', 'POST'],
+          path: '/auth/defra-id/callback',
+          ...callback
+        },
         { method: 'GET', path: '/auth/defra-id/organisation', ...organisation }
       ])
     }

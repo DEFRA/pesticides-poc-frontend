@@ -149,7 +149,9 @@ export async function startLiveDefraId(baseUrl, options = {}) {
     client_id: defraIdConfig.clientId,
     redirect_uri: redirectUri,
     scope: defraIdConfig.scopes.join(' '),
-    response_mode: 'query',
+    // form_post is the Defra Identity-recommended response mode (tech guide 6.1);
+    // the callback accepts the code from the POST body.
+    response_mode: 'form_post',
     state,
     nonce,
     // Defra Identity-specific authorize parameters.

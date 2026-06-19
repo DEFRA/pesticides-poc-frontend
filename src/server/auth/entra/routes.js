@@ -42,10 +42,13 @@ const startSignIn = {
 
 const callback = {
   async handler(request, h) {
-    const { returnTo, profile } = await completeEntraCallback(
-      request,
-      request.query
-    )
+    // Live uses response_mode=form_post (code in the POST body); mock redirects
+    // back with query params. Accept whichever is present.
+    const params =
+      request.payload && Object.keys(request.payload).length
+        ? request.payload
+        : request.query
+    const { returnTo, profile } = await completeEntraCallback(request, params)
     return h.redirect(resolvePostLoginRedirect(profile.role, returnTo))
   }
 }
@@ -57,7 +60,7 @@ export const entraRoutes = {
       server.route([
         { method: 'GET', path: PAGE_PATHS.ENTRA_SIGN_IN, ...signInPage },
         { method: 'GET', path: '/auth/entra/start', ...startSignIn },
-        { method: 'GET', path: '/auth/entra/callback', ...callback }
+        { method: ['GET', 'POST'], path: '/auth/entra/callback', ...callback }
       ])
     }
   }
