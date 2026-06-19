@@ -44,18 +44,18 @@ export function buildAuthDefaults() {
     organisationId: '',
     organisations: [],
     roles: [],
-    role: 'applicant',
+    // Neutral until authentication assigns a role — no role is implied up front.
+    role: '',
     roleLabel: '',
     scope: [],
     claims: {},
     authenticatedAt: '',
-    currentRole: 'applicant',
     // Transient values held only between sign-in start and callback.
     pendingState: '',
     pendingNonce: '',
     pkceVerifier: '',
     pendingRedirectUri: '',
-    pendingIdentity: 'applicant',
+    pendingIdentity: '',
     token: '',
     refreshToken: '',
     idTokenHint: '',
@@ -180,13 +180,12 @@ export async function applyProfile(
     refreshToken: t.refreshToken,
     idTokenHint: t.idToken,
     authenticatedAt: new Date().toISOString(),
-    currentRole: p.role,
     // Clear the transient sign-in values now the exchange is complete.
     pendingState: '',
     pendingNonce: '',
     pkceVerifier: '',
     pendingRedirectUri: '',
-    pendingIdentity: p.role === 'case_officer' ? 'case_officer' : 'applicant'
+    pendingIdentity: ''
   }
 
   return setAuthSession(request, updated)
@@ -223,7 +222,7 @@ export function requireRole(requiredRole) {
       return h.redirect(`${signInPath}?error=auth-required`).takeover()
     }
 
-    if (session.currentRole !== requiredRole) {
+    if (session.role !== requiredRole) {
       return h
         .response(
           requiredRole === 'case_officer'

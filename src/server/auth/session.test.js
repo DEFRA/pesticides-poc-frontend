@@ -111,7 +111,8 @@ describe('#getAuthSession', () => {
     const session = getAuthSession(request)
     expect(session.name).toBe('Alex Grower')
     expect(session.isAuthenticated).toBe(true)
-    expect(session.role).toBe('applicant')
+    // Role stays neutral until authentication assigns one.
+    expect(session.role).toBe('')
   })
 })
 
@@ -139,7 +140,7 @@ describe('#applyProfile', () => {
 
     expect(session.isAuthenticated).toBe(true)
     expect(session.provider).toBe('defra-customer-identity')
-    expect(session.currentRole).toBe('applicant')
+    expect(session.role).toBe('applicant')
     expect(session.roleLabel).toBe('Farmer')
     expect(session.scope).toContain('applicant')
     expect(session.pendingState).toBe('')
@@ -190,7 +191,7 @@ describe('#requireCaseOfficer', () => {
   test('404s an applicant trying to reach a case-officer page', () => {
     const request = {
       yar: fakeYar({
-        auth: { isAuthenticated: true, currentRole: 'applicant' }
+        auth: { isAuthenticated: true, role: 'applicant' }
       }),
       url: { pathname: '/admin', search: '' }
     }
@@ -201,7 +202,7 @@ describe('#requireCaseOfficer', () => {
   test('continues when the case officer role matches', () => {
     const request = {
       yar: fakeYar({
-        auth: { isAuthenticated: true, currentRole: 'case_officer' }
+        auth: { isAuthenticated: true, role: 'case_officer' }
       }),
       url: { pathname: '/admin', search: '' }
     }
