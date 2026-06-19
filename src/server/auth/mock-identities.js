@@ -8,23 +8,9 @@
 // not modelled here yet — needed so user research can cover the traditional-
 // enrolment gate (see docs/auth/AUTH-ARCHITECTURE.md §3).
 
-export function buildMockDefraIdIdentity(identity) {
-  if (identity === 'case_officer') {
-    return {
-      subject: 'urn:fcp:defra-id:case-officer-ulysses',
-      crn: '',
-      email: 'ulysses.alvarez@defra.gov.uk',
-      firstName: 'Ulysses',
-      lastName: 'Case Officer',
-      name: 'Ulysses Case Officer',
-      organisationId: '',
-      organisations: [],
-      roles: ['case_officer'],
-      role: 'case_officer',
-      sessionId: 'mock-session-case-officer'
-    }
-  }
-
+// Defra Identity is the applicant IdP only (case officers use Entra), so there is
+// a single mock identity here.
+export function buildMockDefraIdIdentity() {
   return {
     subject: 'urn:fcp:defra-id:applicant-ulysses',
     crn: '1100100100',

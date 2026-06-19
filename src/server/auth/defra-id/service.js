@@ -43,13 +43,12 @@ export async function startDefraIdSignIn(request, options = {}) {
     options.returnTo || session.returnTo || PAGE_PATHS.REGISTER_TYPE
 
   if (!summary.isLive) {
-    const identity =
-      options.identity === 'case_officer' ? 'case_officer' : 'applicant'
+    // Defra Identity is the applicant IdP only; case officers use Entra.
     session.pendingState = `mock-${Date.now()}`
     session.pendingNonce = `mock-nonce-${Date.now()}`
     session.pkceVerifier = ''
     session.pendingRedirectUri = ''
-    session.pendingIdentity = identity
+    session.pendingIdentity = 'applicant'
     session.mode = 'mock'
     setAuthSession(request, session)
 
@@ -95,7 +94,7 @@ export async function completeDefraIdCallback(request, query = {}) {
       )
     }
 
-    const profile = buildMockDefraIdIdentity(session.pendingIdentity)
+    const profile = buildMockDefraIdIdentity()
     await applyProfile(request, {
       provider: DEFRA_ID_PROVIDER,
       profile,

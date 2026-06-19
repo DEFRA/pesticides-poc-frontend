@@ -4,17 +4,11 @@ import {
 } from './mock-identities.js'
 
 describe('#buildMockDefraIdIdentity', () => {
-  test('returns the applicant with two organisations by default', () => {
-    const identity = buildMockDefraIdIdentity('applicant')
+  test('returns the applicant with two organisations', () => {
+    const identity = buildMockDefraIdIdentity()
     expect(identity.role).toBe('applicant')
     expect(identity.organisations).toHaveLength(2)
     expect(identity.name).toBe('Ulysses Applicant')
-  })
-
-  test('returns the case officer with no organisations', () => {
-    const identity = buildMockDefraIdIdentity('case_officer')
-    expect(identity.role).toBe('case_officer')
-    expect(identity.organisations).toEqual([])
   })
 })
 
