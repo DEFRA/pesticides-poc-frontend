@@ -31,6 +31,8 @@ import {
   toStringArray
 } from '../oidc-common.js'
 
+// In-process discovery cache (POC). See loadDiscovery in ../oidc-common.js for the
+// post-POC caveats (no TTL, per-pod, vs the project's Redis/catbox caching).
 const discoveryCache = {}
 
 export function getDefraIdConfig() {

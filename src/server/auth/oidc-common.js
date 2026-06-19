@@ -116,6 +116,14 @@ export function normaliseTokenResponse(payload) {
 
 // OIDC discovery with per-client caching. `cache` is a mutable holder object
 // ({ wellKnownUrl, document }) owned by the calling client.
+//
+// POST-POC NOTE: this cache is intentionally minimal for the POC. Before
+// production it should be revisited because it is:
+//   - in-process memory only — not shared across pods/instances;
+//   - has no TTL — a rotated discovery doc / JWKS would be served stale;
+//   - inconsistent with the project's existing caching, which already wires up
+//     Redis via @hapi/catbox (see common/helpers/session-cache/cache-engine.js).
+// A shared, TTL'd cache (or the platform's catbox policy) is the production path.
 export async function loadDiscovery(wellKnownUrl, cache, errorMessage) {
   if (cache.wellKnownUrl === wellKnownUrl && cache.document) {
     return cache.document
