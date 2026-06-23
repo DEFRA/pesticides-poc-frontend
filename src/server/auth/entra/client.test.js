@@ -18,9 +18,12 @@ const DISCOVERY = {
     'https://login.microsoftonline.com/tid/oauth2/v2.0/logout'
 }
 
+// Unsigned JWT with a default (valid, far-future) exp so callers only set exp when
+// they want to test expiry. JWKS signature verification is the EQ-256 follow-up.
 function jwt(payload) {
   const enc = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url')
-  return `${enc({ alg: 'none', typ: 'JWT' })}.${enc(payload)}.sig`
+  const withExp = { exp: Math.floor(Date.now() / 1000) + 3600, ...payload }
+  return `${enc({ alg: 'none', typ: 'JWT' })}.${enc(withExp)}.sig`
 }
 
 function stubFetch(routes) {
@@ -127,12 +130,15 @@ describe('#mapEntraClaimsToProfile', () => {
     expect(profile.hasCaseOfficerRole).toBe(true)
   })
 
-  test('does not flag the case-officer role when absent', () => {
+  test('does not flag or assign the case-officer role when absent', () => {
     const profile = mapEntraClaimsToProfile(
       { sub: 's', roles: ['other'] },
       entraConfig
     )
     expect(profile.hasCaseOfficerRole).toBe(false)
+    // Role must NOT be assigned without the claim, or the user would pass the
+    // case-officer guard on /admin/*.
+    expect(profile.role).toBe('')
   })
 
   test('throws 422 when the subject claim is missing', () => {
@@ -188,6 +194,49 @@ describe('#completeLiveEntra', () => {
     setLiveConfig()
     await expect(
       completeLiveEntra({ code: 'c', state: 'bad' }, { state: 'good' })
+    ).rejects.toMatchObject({ statusCode: 422 })
+  })
+})
+
+describe('#completeLiveEntra (token validation)', () => {
+  test('rejects a token that omits the nonce claim', async () => {
+    setLiveConfig()
+    const idToken = jwt({ oid: 'oid-1', roles: ['case_officer'] }) // no nonce
+    vi.stubGlobal(
+      'fetch',
+      stubFetch({
+        '.well-known': { body: DISCOVERY },
+        '/v2.0/token': { body: { id_token: idToken } }
+      })
+    )
+    await expect(
+      completeLiveEntra(
+        { code: 'c', state: 'st' },
+        { state: 'st', nonce: 'EXPECTED', redirectUri: 'https://app/cb' }
+      )
+    ).rejects.toMatchObject({ statusCode: 422 })
+  })
+
+  test('rejects an expired token', async () => {
+    setLiveConfig()
+    const idToken = jwt({
+      oid: 'oid-1',
+      roles: ['case_officer'],
+      nonce: 'N1',
+      exp: Math.floor(Date.now() / 1000) - 60 // already expired
+    })
+    vi.stubGlobal(
+      'fetch',
+      stubFetch({
+        '.well-known': { body: DISCOVERY },
+        '/v2.0/token': { body: { id_token: idToken } }
+      })
+    )
+    await expect(
+      completeLiveEntra(
+        { code: 'c', state: 'st' },
+        { state: 'st', nonce: 'N1', redirectUri: 'https://app/cb' }
+      )
     ).rejects.toMatchObject({ statusCode: 422 })
   })
 })

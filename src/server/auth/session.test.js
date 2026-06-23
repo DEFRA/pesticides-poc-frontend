@@ -96,6 +96,13 @@ describe('#resolvePostLoginRedirect', () => {
       PAGE_PATHS.REGISTER_TYPE
     )
   })
+
+  test('blocks open-redirect (backslash) returnTo', () => {
+    // Browsers normalise `/\evil.com` to `https://evil.com` in a Location header.
+    expect(resolvePostLoginRedirect('applicant', '/\\evil.example.com')).toBe(
+      PAGE_PATHS.REGISTER_TYPE
+    )
+  })
 })
 
 describe('#getAuthSession', () => {
@@ -144,6 +151,21 @@ describe('#applyProfile', () => {
     expect(session.roleLabel).toBe('Farmer')
     expect(session.scope).toContain('applicant')
     expect(session.pendingState).toBe('')
+  })
+
+  test('an empty/unknown role is NOT granted applicant scope', async () => {
+    // e.g. an Entra user whose token lacks the case-officer claim → role ''.
+    const request = { yar: fakeYar({ auth: buildAuthDefaults() }) }
+
+    const session = await applyProfile(request, {
+      provider: 'microsoft-entra-id',
+      profile: { subject: 'urn:staff', name: 'No Role', role: '', roles: [] },
+      mode: 'mock'
+    })
+
+    expect(session.role).toBe('')
+    expect(session.scope).not.toContain('applicant')
+    expect(session.scope).not.toContain('case_officer')
   })
 })
 

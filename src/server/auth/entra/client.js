@@ -7,8 +7,8 @@
 // Authorization-code flow against Entra ID v2.0, endpoints discovered from the
 // tenant well-known URL, PKCE (S256) + state + nonce, claim map
 // (oid|sub -> subject, email|preferred_username -> email, app `roles` -> roles).
-// JWKS signature verification is a documented follow-up (state/nonce/expiry are
-// checked); production direction is SAML 2.0.
+// State, nonce and token expiry are checked; RS256/JWKS signature plus iss/aud
+// verification are the EQ-256 hardening follow-up. Production direction is SAML 2.0.
 
 import { randomUUID } from 'node:crypto'
 
@@ -16,6 +16,7 @@ import { config } from '#/config/config.js'
 
 import {
   HTTP_UNPROCESSABLE_ENTITY,
+  assertTokenClaims,
   buildDisplayName,
   createHttpError,
   createPkcePair,
@@ -182,6 +183,9 @@ export function mapEntraClaimsToProfile(claims, entraConfig) {
   const caseOfficerValue = String(
     entraConfig.roles.caseOfficerValue || 'case_officer'
   )
+  const hasCaseOfficerRole = roles.some(
+    (value) => value.toLowerCase() === caseOfficerValue.toLowerCase()
+  )
 
   return {
     subject,
@@ -190,10 +194,11 @@ export function mapEntraClaimsToProfile(claims, entraConfig) {
     lastName,
     name: buildDisplayName(firstName, lastName, claims.name),
     roles,
-    role: 'case_officer',
-    hasCaseOfficerRole: roles.some(
-      (value) => value.toLowerCase() === caseOfficerValue.toLowerCase()
-    ),
+    // Only grant the case-officer role when the token actually carries it.
+    // Assigning it unconditionally would let any authenticated Entra user past
+    // the case-officer guard on /admin/*.
+    role: hasCaseOfficerRole ? 'case_officer' : '',
+    hasCaseOfficerRole,
     sessionId: String(claims.sid || ''),
     claims
   }
@@ -230,21 +235,12 @@ export async function completeLiveEntra(callback, sessionState) {
     sessionState.pkceVerifier
   )
 
-  const claims = {
-    ...decodeJwtPayload(tokens.accessToken),
-    ...decodeJwtPayload(tokens.idToken)
-  }
+  // Identity comes from the ID token only; the access token is an opaque bearer
+  // credential for resource servers and must not be trusted for identity claims.
+  const claims = decodeJwtPayload(tokens.idToken)
 
-  if (
-    sessionState?.nonce &&
-    claims?.nonce &&
-    claims.nonce !== sessionState.nonce
-  ) {
-    throw createHttpError(
-      HTTP_UNPROCESSABLE_ENTITY,
-      'Microsoft Entra nonce validation failed in callback'
-    )
-  }
+  // Mandatory nonce + expiry checks (shared with the Defra Identity client).
+  assertTokenClaims(claims, sessionState, 'Microsoft Entra')
 
   const profile = mapEntraClaimsToProfile(claims, entraConfig)
 

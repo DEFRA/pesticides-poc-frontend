@@ -17,7 +17,8 @@ const DISCOVERY = {
 
 function jwt(payload) {
   const enc = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url')
-  return `${enc({ alg: 'none', typ: 'JWT' })}.${enc(payload)}.sig`
+  const withExp = { exp: Math.floor(Date.now() / 1000) + 3600, ...payload }
+  return `${enc({ alg: 'none', typ: 'JWT' })}.${enc(withExp)}.sig`
 }
 
 function stubFetch(routes) {

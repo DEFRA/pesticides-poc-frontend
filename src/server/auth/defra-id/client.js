@@ -8,12 +8,12 @@
 //     (scope = `openid offline_access <clientId>`)
 //   - claim map carries ORGANISATION/RELATIONSHIP context the Entra flow lacks:
 //     sub -> subject, contactId, currentRelationshipId -> organisationId,
-//     relationships -> organisations[], roles, sid
+//     relationships -> organisations[], roles, sessionId
 //
 // Framework-agnostic: node:crypto + fetch only (shared plumbing in ../oidc-common.js);
-// the Hapi layer passes a `baseUrl` string. Authorization-code + PKCE (S256) + state +
-// nonce. JWKS signature verification is a documented follow-up (state/nonce/expiry are
-// checked).
+// the Hapi layer passes a `baseUrl` string. Authorization-code + PKCE (S256) + state.
+// State, nonce and token expiry are checked; RS256/JWKS signature plus iss/aud
+// verification are the EQ-256 hardening follow-up.
 
 import { randomUUID } from 'node:crypto'
 
@@ -21,6 +21,7 @@ import { config } from '#/config/config.js'
 
 import {
   HTTP_UNPROCESSABLE_ENTITY,
+  assertTokenClaims,
   buildDisplayName,
   createHttpError,
   createPkcePair,
@@ -259,6 +260,8 @@ export function mapDefraIdClaimsToProfile(claims) {
     organisationId: currentRelationshipId,
     organisations: readOrganisations(claims[claimMap.relationships]),
     roles: toStringArray(claims[claimMap.roles]),
+    // Defra Identity is the applicant-only IdP (it never mints a case officer),
+    // so the role is fixed rather than claim-derived as it is for Entra.
     role: 'applicant',
     sessionId: String(claims[claimMap.sessionId] || ''),
     claims
@@ -296,21 +299,12 @@ export async function completeLiveDefraId(callback, sessionState) {
     sessionState.pkceVerifier
   )
 
-  const claims = {
-    ...decodeJwtPayload(tokens.accessToken),
-    ...decodeJwtPayload(tokens.idToken)
-  }
+  // Identity comes from the ID token only; the access token is an opaque bearer
+  // credential for resource servers and must not be trusted for identity claims.
+  const claims = decodeJwtPayload(tokens.idToken)
 
-  if (
-    sessionState?.nonce &&
-    claims?.nonce &&
-    claims.nonce !== sessionState.nonce
-  ) {
-    throw createHttpError(
-      HTTP_UNPROCESSABLE_ENTITY,
-      'Defra Identity nonce validation failed in callback'
-    )
-  }
+  // Mandatory nonce + expiry checks (shared with the Entra client).
+  assertTokenClaims(claims, sessionState, 'Defra Identity')
 
   const profile = mapDefraIdClaimsToProfile(claims)
 

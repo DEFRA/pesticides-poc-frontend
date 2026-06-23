@@ -22,8 +22,15 @@ const MOCK_ROLE_LABELS = {
 }
 
 export async function getPermissions(profile) {
-  const roleKey =
-    profile?.role === 'case_officer' ? 'case_officer' : 'applicant'
+  // Key strictly off a recognised role. A blank/unknown role (e.g. an Entra user
+  // whose token lacks the case-officer claim) must NOT fall back to applicant —
+  // that would grant applicant scope to someone who never authenticated as one.
+  const roleKey = MOCK_PRIVILEGES[profile?.role] ? profile.role : ''
+
+  if (!roleKey) {
+    // Authenticated but no recognised role: no role privileges.
+    return { role: '', scope: [DEFAULT_SCOPE] }
+  }
 
   const privileges = MOCK_PRIVILEGES[roleKey]
 

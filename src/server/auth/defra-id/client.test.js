@@ -16,11 +16,13 @@ const DISCOVERY = {
   end_session_endpoint: 'https://b2c.example.com/logout'
 }
 
-// Build an unsigned JWT (the client decodes the payload; JWKS verification is a
-// documented follow-up so the signature is not checked).
+// Build an unsigned JWT (the client decodes the payload; RS256/JWKS verification is
+// the EQ-256 follow-up so the signature is not checked). A valid far-future exp is
+// injected by default so callers only set exp when they want to test expiry.
 function jwt(payload) {
   const enc = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url')
-  return `${enc({ alg: 'none', typ: 'JWT' })}.${enc(payload)}.sig`
+  const withExp = { exp: Math.floor(Date.now() / 1000) + 3600, ...payload }
+  return `${enc({ alg: 'none', typ: 'JWT' })}.${enc(withExp)}.sig`
 }
 
 // Route fetch by URL substring so discovery + token endpoints can be stubbed together.
@@ -254,7 +256,9 @@ describe('#completeLiveDefraId', () => {
       completeLiveDefraId({ state: 'st' }, { state: 'st' })
     ).rejects.toMatchObject({ statusCode: 422 })
   })
+})
 
+describe('#completeLiveDefraId (token validation)', () => {
   test('rejects a mismatched nonce', async () => {
     setLiveConfig()
     const idToken = jwt({ sub: 'p1', nonce: 'WRONG' })
@@ -269,6 +273,46 @@ describe('#completeLiveDefraId', () => {
       completeLiveDefraId(
         { code: 'c', state: 'st' },
         { state: 'st', nonce: 'EXPECTED', redirectUri: 'https://app/cb' }
+      )
+    ).rejects.toMatchObject({ statusCode: 422 })
+  })
+
+  test('rejects a token that omits the nonce claim', async () => {
+    setLiveConfig()
+    const idToken = jwt({ sub: 'p1' }) // no nonce
+    vi.stubGlobal(
+      'fetch',
+      stubFetch({
+        '.well-known': { body: DISCOVERY },
+        '/oauth/token': { body: { id_token: idToken } }
+      })
+    )
+    await expect(
+      completeLiveDefraId(
+        { code: 'c', state: 'st' },
+        { state: 'st', nonce: 'EXPECTED', redirectUri: 'https://app/cb' }
+      )
+    ).rejects.toMatchObject({ statusCode: 422 })
+  })
+
+  test('rejects an expired token', async () => {
+    setLiveConfig()
+    const idToken = jwt({
+      sub: 'p1',
+      nonce: 'N1',
+      exp: Math.floor(Date.now() / 1000) - 60 // already expired
+    })
+    vi.stubGlobal(
+      'fetch',
+      stubFetch({
+        '.well-known': { body: DISCOVERY },
+        '/oauth/token': { body: { id_token: idToken } }
+      })
+    )
+    await expect(
+      completeLiveDefraId(
+        { code: 'c', state: 'st' },
+        { state: 'st', nonce: 'N1', redirectUri: 'https://app/cb' }
       )
     ).rejects.toMatchObject({ statusCode: 422 })
   })

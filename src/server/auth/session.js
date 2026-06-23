@@ -114,7 +114,11 @@ function isSafeLocalPath(value) {
   return (
     typeof value === 'string' &&
     value.startsWith('/') &&
-    !value.startsWith('//')
+    // Reject protocol-relative (`//host`) and backslash (`/\host`) forms:
+    // browsers normalise `/\evil.com` in a Location header to `https://evil.com`,
+    // which would be an open redirect.
+    !value.startsWith('//') &&
+    !value.startsWith('/\\')
   )
 }
 

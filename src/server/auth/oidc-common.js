@@ -15,28 +15,18 @@ export function createHttpError(statusCode, message, details = []) {
 }
 
 export function toBase64Url(value) {
-  return Buffer.from(value)
-    .toString('base64')
-    .replaceAll('=', '')
-    .replaceAll('+', '-')
-    .replaceAll('/', '_')
+  return Buffer.from(value).toString('base64url')
 }
 
 export function fromBase64Url(value) {
-  const normalised = value.replaceAll('-', '+').replaceAll('_', '/')
-  const padLength = normalised.length % 4
-  const padded = padLength ? normalised + '='.repeat(4 - padLength) : normalised
-  return Buffer.from(padded, 'base64').toString('utf8')
+  return Buffer.from(value, 'base64url').toString('utf8')
 }
 
 export function createPkcePair() {
   const codeVerifier = toBase64Url(randomBytes(PKCE_VERIFIER_BYTES))
   const codeChallenge = createHash('sha256')
     .update(codeVerifier)
-    .digest('base64')
-    .replaceAll('=', '')
-    .replaceAll('+', '-')
-    .replaceAll('/', '_')
+    .digest('base64url')
 
   return { codeVerifier, codeChallenge }
 }
@@ -79,6 +69,27 @@ export function decodeJwtPayload(token) {
   }
 
   return JSON.parse(fromBase64Url(segments[1]))
+}
+
+// Enforce the mandatory replay/expiry claims on a decoded ID token, shared by both
+// identity clients. The nonce must be present AND match the value we issued (a token
+// that omits nonce must not pass), and the token must not be expired. NOTE: RS256/JWKS
+// signature verification plus `iss`/`aud` checks are the EQ-256 hardening follow-up;
+// only nonce and expiry are enforced here.
+export function assertTokenClaims(claims, sessionState, providerLabel) {
+  if (!claims.nonce || claims.nonce !== sessionState?.nonce) {
+    throw createHttpError(
+      HTTP_UNPROCESSABLE_ENTITY,
+      `${providerLabel} nonce validation failed in callback`
+    )
+  }
+
+  if (!claims.exp || claims.exp * 1000 <= Date.now()) {
+    throw createHttpError(
+      HTTP_UNPROCESSABLE_ENTITY,
+      `${providerLabel} token has expired`
+    )
+  }
 }
 
 // First defined, non-empty value as a string (used for claim fallbacks).
