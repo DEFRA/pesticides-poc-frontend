@@ -13,6 +13,7 @@ import {
   buildEntraSignOutUrl
 } from './client.js'
 import { buildMockEntraIdentity } from '../mock-identities.js'
+import { HTTP_UNPROCESSABLE_ENTITY } from '../oidc-common.js'
 import {
   ENTRA_PROVIDER,
   PAGE_PATHS,
@@ -23,8 +24,6 @@ import {
   resolveBaseUrl,
   setAuthSession
 } from '../session.js'
-
-const HTTP_UNPROCESSABLE_ENTITY = 422
 
 function baseUrlFor(request) {
   return resolveBaseUrl(request, config.get('auth.entra.publicBaseUrl'))
