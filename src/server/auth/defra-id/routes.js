@@ -18,6 +18,8 @@ import {
   requireApplicant,
   resolvePostLoginRedirect
 } from '../session.js'
+import { english } from '#/server/data/en/en.js'
+import { LANG_EN } from '#/server/data/constants.js'
 
 const signInPage = {
   handler(request, h) {
@@ -26,12 +28,15 @@ const signInPage = {
     const { returnTo, error } = request.query
 
     return h.view('defra-id/sign-in', {
-      pageTitle: 'Sign in',
-      heading: 'Sign in to apply',
+      pageTitle: english.defraIdSignIn.pageTitle,
+      heading: english.defraIdSignIn.heading,
+      t: english.defraIdSignIn,
+      shared: english.authShared,
       summary,
       session,
       returnTo: returnTo || '',
-      authError: error || ''
+      authError: error || '',
+      lang: LANG_EN
     })
   }
 }

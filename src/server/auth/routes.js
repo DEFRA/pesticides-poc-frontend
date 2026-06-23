@@ -12,6 +12,8 @@ import {
   getAuthSession,
   requireAuth
 } from './session.js'
+import { english } from '#/server/data/en/en.js'
+import { LANG_EN } from '#/server/data/constants.js'
 
 // Where requireAuth lands an unauthenticated visitor: we don't yet know whether
 // they're an applicant or a case officer, so offer both rather than guess.
@@ -45,9 +47,11 @@ const account = {
     const session = getAuthSession(request)
 
     return h.view('account', {
-      pageTitle: 'Your account',
-      heading: 'You are signed in',
-      session
+      pageTitle: english.account.pageTitle,
+      heading: english.account.heading,
+      t: english.account,
+      session,
+      lang: LANG_EN
     })
   }
 }

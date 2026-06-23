@@ -7,6 +7,10 @@
 {# Import custom components globally #}
 {% from "heading/macro.njk" import appHeading %}
 
+{# Drive the GOV.UK <html lang> attribute from the per-request language the
+   controllers pass (defaults to "en" via the GOV.UK template). #}
+{% set htmlLang = lang %}
+
 {% set mainClasses = "app-main-wrapper" %}
 
 {% block headIcons %}

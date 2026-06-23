@@ -14,6 +14,8 @@ import {
   getAuthSession,
   resolvePostLoginRedirect
 } from '../session.js'
+import { english } from '#/server/data/en/en.js'
+import { LANG_EN } from '#/server/data/constants.js'
 
 const signInPage = {
   handler(request, h) {
@@ -22,12 +24,15 @@ const signInPage = {
     const { returnTo, error } = request.query
 
     return h.view('entra/sign-in', {
-      pageTitle: 'Staff sign in',
-      heading: 'Case officer sign in',
+      pageTitle: english.entraSignIn.pageTitle,
+      heading: english.entraSignIn.heading,
+      t: english.entraSignIn,
+      shared: english.authShared,
       summary,
       session,
       returnTo: returnTo || '',
-      authError: error || ''
+      authError: error || '',
+      lang: LANG_EN
     })
   }
 }
