@@ -1,0 +1,25 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  {{ appHeading({
+    text: heading,
+    caption: "Applicant"
+  }) }}
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <p class="govuk-body" data-testid="register-applicant">
+        Signed in as {{ session.name }}{% if session.organisationId %} for organisation {{ session.organisationId }}{% endif %}.
+      </p>
+      <p class="govuk-body">
+        The registration journey will start here. This view is a placeholder for the
+        applicant sign-in POC.
+      </p>
+      <p class="govuk-body">
+        <a class="govuk-link" href="/auth/account">View your account</a>
+        or <a class="govuk-link" href="/auth/sign-out">sign out</a>.
+      </p>
+    </div>
+  </div>
+
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/inset-text/macro.njk" import govukInsetText %}
+
+{% block content %}
+  {{ appHeading({
+    text: heading,
+    caption: "Microsoft Entra ID"
+  }) }}
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if authError == 'auth-required' %}
+        {{ govukNotificationBanner({
+          text: "You need to sign in to continue.",
+          type: "important"
+        }) }}
+      {% endif %}
+
+      {% if session.isAuthenticated %}
+        <p class="govuk-body" data-testid="signed-in-note">
+          You are already signed in as {{ session.name }}.
+        </p>
+        <p class="govuk-body">
+          <a class="govuk-link" href="/auth/account">View your account</a>
+          or <a class="govuk-link" href="/auth/sign-out">sign out</a>.
+        </p>
+      {% else %}
+        <p class="govuk-body">
+          HSE/CRD case officers sign in with their Defra staff account to review and
+          decide pesticides applications.
+        </p>
+
+        {% if summary.isLive and not summary.configured %}
+          {{ govukWarningText({
+            text: "Live sign-in is not fully configured (" + summary.missing | join(", ") + "). Set the ENTRA_* environment variables.",
+            iconFallbackText: "Warning"
+          }) }}
+        {% else %}
+          {% if summary.isLive %}
+            {{ govukInsetText({
+              text: "Live mode is enabled — you will sign in with your real Defra staff account.",
+              attributes: { "data-testid": "live-enabled" }
+            }) }}
+          {% endif %}
+          {{ govukButton({
+            text: "Sign in",
+            href: "/auth/entra/start" + ("?returnTo=" + returnTo if returnTo else ""),
+            isStartButton: true,
+            attributes: { "data-testid": "entra-start" }
+          }) }}
+        {% endif %}
+
+        <p class="govuk-body-s govuk-!-margin-top-4" data-testid="auth-mode">
+          Mode: <strong>{{ summary.mode }}</strong>{% if summary.mode == 'mock' %} — a local demo identity is used; no credentials needed.{% endif %}
+        </p>
+      {% endif %}
+
+    </div>
+  </div>
+
+{% endblock %}

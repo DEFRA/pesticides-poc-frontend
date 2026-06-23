@@ -10,3 +10,10 @@ coverage
 .envrc
 tsconfig.tsbuildinfo
 .env
+
+# Local-only working docs. The chat export + context handoff are personal
+# working notes kept out of the repo so they don't bloat PRs; they live on disk
+# only. The architecture doc (AUTH-ARCHITECTURE.md) IS tracked as the reviewable
+# design artifact.
+docs/auth/CHAT-EXPORT-full.md
+docs/auth/CONTEXT-HANDOFF.md
