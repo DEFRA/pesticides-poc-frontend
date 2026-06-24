@@ -50,6 +50,14 @@
             isStartButton: true,
             attributes: { "data-testid": "entra-start" }
           }) }}
+
+          {# SAML 2.0 is the production direction for case officers (EQ-257). #}
+          {{ govukButton({
+            text: t.samlSignInButton,
+            href: samlStartUrl + ("?returnTo=" + returnTo if returnTo else ""),
+            classes: "govuk-button--secondary",
+            attributes: { "data-testid": "entra-saml-start" }
+          }) }}
         {% endif %}
 
         <p class="govuk-body-s govuk-!-margin-top-4" data-testid="auth-mode">

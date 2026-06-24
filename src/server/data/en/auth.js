@@ -39,7 +39,8 @@ export const authTranslations = {
       'Live mode is enabled — you will sign in with your real Defra staff account.',
     notConfiguredPrefix: NOT_CONFIGURED_PREFIX,
     notConfiguredSuffix: '). Set the ENTRA_* environment variables.',
-    signInButton: SIGN_IN_BUTTON
+    signInButton: SIGN_IN_BUTTON,
+    samlSignInButton: 'Sign in with SAML 2.0 (case officer)'
   },
 
   account: {

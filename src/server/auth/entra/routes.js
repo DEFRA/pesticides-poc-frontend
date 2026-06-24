@@ -9,6 +9,7 @@ import {
   startEntraSignIn,
   completeEntraCallback
 } from './service.js'
+import { getEntraSamlSummary } from '../entra-saml/service.js'
 import {
   PAGE_PATHS,
   getAuthSession,
@@ -20,6 +21,7 @@ import { LANG_EN } from '#/server/data/constants.js'
 const signInPage = {
   handler(request, h) {
     const summary = getEntraSummary(request)
+    const samlSummary = getEntraSamlSummary(request)
     const session = getAuthSession(request)
     const { returnTo, error } = request.query
 
@@ -29,6 +31,10 @@ const signInPage = {
       t: english.entraSignIn,
       shared: english.authShared,
       summary,
+      // SAML is the production direction for case officers (EQ-257); expose its
+      // start alongside the interim OIDC button during the transition.
+      samlSummary,
+      samlStartUrl: '/auth/entra/saml/start',
       session,
       returnTo: returnTo || '',
       authError: error || '',

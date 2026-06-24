@@ -85,6 +85,37 @@ production direction — pending confirmation with the architect.)
 
 ---
 
+## Case officer — Microsoft Entra ID SAML 2.0 (EQ-257, production direction)
+
+Source: **CCoE / M365 WebOps** (SAML config lives on the Entra **Enterprise
+Application**; IdP values come from its federation metadata). Entra is the IdP, this
+app is the SP. Until these are set, the SAML live flow fails closed (HTTP 422).
+
+| Variable                           | Required | Sensitive | Default                | Description                                         |
+| ---------------------------------- | -------- | --------- | ---------------------- | --------------------------------------------------- |
+| `ENTRA_SAML_AUTH_MODE`             | yes      | no        | `mock`                 | Set to `live` to enable the real SAML flow          |
+| `ENTRA_SAML_IDP_ENTITY_ID`         | yes      | no        | —                      | IdP entityID (issuer) from the federation metadata  |
+| `ENTRA_SAML_IDP_SSO_URL`           | yes      | no        | —                      | IdP SAML SSO (sign-on) URL                          |
+| `ENTRA_SAML_IDP_CERTIFICATE`       | yes      | no        | —                      | IdP token-signing certificate (verifies assertions) |
+| `ENTRA_SAML_SP_ENTITY_ID`          | yes      | no        | —                      | Our SP entityID (identifier) on the Enterprise App  |
+| `ENTRA_SAML_ACS_PATH`              | no       | no        | `/auth/entra/saml/acs` | Assertion Consumer Service (reply) path             |
+| `ENTRA_SAML_SIGN_OUT_REDIRECT_URL` | no       | no        | `/`                    | Post-logout redirect URL                            |
+
+Public base URL + case-officer role value are shared with the OIDC config
+(`ENTRA_PUBLIC_BASE_URL`, `ENTRA_CASE_OFFICER_ROLE_VALUE`).
+
+**Values to give CCoE for the Enterprise Application** (built from `ENTRA_PUBLIC_BASE_URL`):
+
+- Identifier (Entity ID): `<ENTRA_SAML_SP_ENTITY_ID>` (e.g. `<base>/auth/entra/saml`)
+- Reply URL (ACS): `<ENTRA_PUBLIC_BASE_URL>/auth/entra/saml/acs`
+- Sign-on URL (SP-initiated): `<ENTRA_PUBLIC_BASE_URL>/auth/entra/saml/start`
+
+**Assertion validation** (via `@node-saml/node-saml`): XML signature against
+`ENTRA_SAML_IDP_CERTIFICATE`, audience = SP entityID, time conditions. `InResponseTo`
+binding is a production follow-up (needs a shared request cache).
+
+---
+
 ## Go-live checklist (per flow)
 
 1. Register the client/app with the IdP; add the redirect + post-logout URIs above; for
