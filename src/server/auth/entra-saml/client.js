@@ -6,16 +6,17 @@
 // profile. SAML config lives on the Entra Enterprise Application (see
 // docs/auth/EQ-257-entra-saml-ticket.md).
 //
-// Framework-agnostic: node:crypto + node:zlib only; the Hapi layer passes a `baseUrl`.
-// IMPLEMENTED here: config + summary, the SP-initiated AuthnRequest redirect, and the
-// attribute -> profile mapping (with case-officer role enforcement).
-// NOT YET IMPLEMENTED (live seam — blocked on CCoE's IdP signing cert + a vetted SAML
-// library decision): cryptographic validation of the SAMLResponse assertion
-// (XML signature against the IdP cert, audience, conditions, InResponseTo). See
-// `validateSamlResponse`.
+// The Hapi layer passes a `baseUrl`. Implemented here: config + summary, the
+// SP-initiated AuthnRequest redirect, assertion validation via @node-saml/node-saml
+// (signature against the IdP cert, audience, conditions), and the attribute ->
+// profile mapping (with case-officer role enforcement). The remaining live work is
+// configuration only: CCoE provide the real IdP cert/SSO URL/entityID, then the
+// one-off smoke test (see docs/auth/EQ-257-entra-saml-ticket.md).
 
 import { randomUUID } from 'node:crypto'
 import { deflateRawSync } from 'node:zlib'
+
+import { SAML, ValidateInResponseTo } from '@node-saml/node-saml'
 
 import { config } from '#/config/config.js'
 
@@ -27,6 +28,9 @@ import {
   resolveUrl,
   toStringArray
 } from '../oidc-common.js'
+
+// Tolerated clock skew when validating assertion time conditions.
+const SAML_CLOCK_SKEW_MS = 60000
 
 // Standard Entra/ADFS SAML attribute claim URIs, tolerated alongside friendly keys.
 const SAML_CLAIM = {
@@ -195,20 +199,72 @@ export function mapSamlAttributesToProfile(attributes = {}, samlConfig) {
   }
 }
 
-// LIVE SEAM — NOT YET IMPLEMENTED.
-// Validating a SAMLResponse means: verify the XML signature on the assertion against
-// the IdP signing certificate (samlConfig.idpCertificate), then check audience
-// (= spEntityId), conditions (NotBefore/NotOnOrAfter), and InResponseTo. XML-DSig
-// canonicalisation is error-prone to hand-roll, so this should use a vetted SAML
-// library (e.g. @node-saml/node-saml) once CCoE provide the IdP metadata/cert.
-// Until then the live path fails closed.
-export function validateSamlResponse() {
-  throw createHttpError(
-    HTTP_UNPROCESSABLE_ENTITY,
-    'Microsoft Entra SAML live assertion validation is not yet implemented ' +
-      '(pending CCoE IdP metadata/signing certificate and the SAML library ' +
-      'integration). See docs/auth/EQ-257-entra-saml-ticket.md.'
-  )
+// Build a node-saml SAML instance from our config (the SP side of the trust).
+function buildSamlInstance(samlConfig, baseUrl) {
+  return new SAML({
+    // Trust anchor: verify the assertion signature against the IdP's cert.
+    idpCert: samlConfig.idpCertificate,
+    idpIssuer: samlConfig.idpEntityId,
+    // Our SP identity + where the IdP posts the response back.
+    issuer: samlConfig.spEntityId,
+    callbackUrl: resolveUrl(baseUrl, samlConfig.acsPath),
+    // Validate the assertion is addressed to us.
+    audience: samlConfig.spEntityId,
+    // Entra signs the assertion by default; confirm against the live tenant
+    // config whether the response is also signed and tighten if so.
+    wantAssertionsSigned: true,
+    wantAuthnResponseSigned: false,
+    // POC: no InResponseTo cache yet (would need a shared store, e.g. catbox).
+    // Production follow-up: bind the response to our AuthnRequest id.
+    validateInResponseTo: ValidateInResponseTo.never,
+    acceptedClockSkewMs: SAML_CLOCK_SKEW_MS
+  })
+}
+
+// Verify a SAMLResponse end-to-end via node-saml (XML signature against the IdP
+// cert, audience, conditions/timestamps), then return the assertion attributes for
+// mapping. Fails closed (HTTP 422) on any validation error or incomplete config.
+export async function validateSamlResponse(samlResponseB64, options = {}) {
+  const samlConfig = getEntraSamlConfig()
+  const missing = getMissingLiveConfig(samlConfig)
+  if (missing.length) {
+    throw createHttpError(
+      HTTP_UNPROCESSABLE_ENTITY,
+      `Microsoft Entra SAML live configuration is incomplete: ${missing.join(', ')}`,
+      missing.map((key) => ({ field: key, message: `${key} is required` }))
+    )
+  }
+  if (!samlResponseB64) {
+    throw createHttpError(
+      HTTP_UNPROCESSABLE_ENTITY,
+      'Missing SAMLResponse in Microsoft Entra SAML callback'
+    )
+  }
+
+  let profile
+  try {
+    const saml = buildSamlInstance(samlConfig, options.baseUrl)
+    const result = await saml.validatePostResponseAsync({
+      SAMLResponse: samlResponseB64
+    })
+    profile = result?.profile
+  } catch (error) {
+    throw createHttpError(
+      HTTP_UNPROCESSABLE_ENTITY,
+      `Microsoft Entra SAML assertion validation failed: ${error.message}`
+    )
+  }
+
+  if (!profile) {
+    throw createHttpError(
+      HTTP_UNPROCESSABLE_ENTITY,
+      'Microsoft Entra SAML response contained no assertion profile'
+    )
+  }
+
+  // node-saml flattens attributes (keyed by claim name/URI) onto the profile and
+  // exposes the NameID separately; surface both for mapSamlAttributesToProfile.
+  return { nameId: profile.nameID, ...profile }
 }
 
 export function buildSamlSignOutUrl(baseUrl) {

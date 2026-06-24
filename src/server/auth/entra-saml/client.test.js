@@ -142,11 +142,27 @@ describe('#mapSamlAttributesToProfile', () => {
   })
 })
 
-describe('#validateSamlResponse (live seam)', () => {
-  test('fails closed until the IdP cert + SAML library are wired', () => {
-    expect(() => validateSamlResponse('<saml>...</saml>', {})).toThrow(
-      /not yet implemented/
-    )
+describe('#validateSamlResponse (real node-saml, fails closed)', () => {
+  test('throws 422 when live config is incomplete', async () => {
+    config.set('auth.entraSaml.mode', 'live') // required IdP fields left blank
+    await expect(
+      validateSamlResponse('anything', { baseUrl: 'https://app.example' })
+    ).rejects.toMatchObject({ statusCode: 422 })
+  })
+
+  test('throws 422 when the SAMLResponse is missing', async () => {
+    setLiveConfig()
+    await expect(
+      validateSamlResponse('', { baseUrl: 'https://app.example' })
+    ).rejects.toMatchObject({ statusCode: 422 })
+  })
+
+  test('rejects an invalid/unsigned SAMLResponse with 422', async () => {
+    setLiveConfig()
+    const junk = Buffer.from('<samlp:Response/>').toString('base64')
+    await expect(
+      validateSamlResponse(junk, { baseUrl: 'https://app.example' })
+    ).rejects.toMatchObject({ statusCode: 422 })
   })
 })
 

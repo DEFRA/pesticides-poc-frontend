@@ -85,23 +85,21 @@ export async function completeEntraSamlAcs(request, params = {}) {
       )
     }
 
-    const profile = buildMockEntraIdentity()
+    const mockProfile = buildMockEntraIdentity()
     await applyProfile(request, {
       provider: ENTRA_PROVIDER,
-      profile,
+      profile: mockProfile,
       mode: 'mock'
     })
     return {
       returnTo: session.returnTo || PAGE_PATHS.ADMIN_APPLICATIONS,
-      profile
+      profile: mockProfile
     }
   }
 
-  // Live: validate the assertion (currently the documented seam — fails closed),
-  // then map its attributes to the staff profile.
-  const attributes = validateSamlResponse(params.SAMLResponse, {
-    requestId: session.pendingState,
-    spEntityId: getEntraSamlConfig().spEntityId
+  // Live: verify the SAMLResponse assertion (node-saml), then map its attributes.
+  const attributes = await validateSamlResponse(params.SAMLResponse, {
+    baseUrl: baseUrlFor(request)
   })
   const profile = mapSamlAttributesToProfile(attributes, getEntraSamlConfig())
 
