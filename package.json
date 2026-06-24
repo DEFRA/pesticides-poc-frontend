@@ -48,6 +48,7 @@
     "@hapi/scooter": "8.0.0",
     "@hapi/vision": "7.0.3",
     "@hapi/yar": "11.0.3",
+    "@node-saml/node-saml": "5.1.0",
     "blankie": "5.0.0",
     "convict": "6.2.5",
     "convict-format-with-validator": "6.2.0",
