@@ -388,6 +388,54 @@ export const config = convict({
         default: 'case_officer',
         env: 'ENTRA_CASE_OFFICER_ROLE_VALUE'
       }
+    },
+    // SAML 2.0 SSO for INTERNAL case officers (EQ-257 — production direction).
+    // Entra is the IdP, this app is the SP. SAML config lives on the Entra
+    // Enterprise Application; the values below come from CCoE onboarding.
+    // See docs/auth/EQ-257-entra-saml-ticket.md.
+    entraSaml: {
+      mode: {
+        doc: 'Entra SAML auth mode: mock or live',
+        format: ['mock', 'live'],
+        default: 'mock',
+        env: 'ENTRA_SAML_AUTH_MODE'
+      },
+      idpEntityId: {
+        doc: 'Entra IdP entityID (issuer) from the federation metadata',
+        format: String,
+        default: '',
+        env: 'ENTRA_SAML_IDP_ENTITY_ID'
+      },
+      idpSsoUrl: {
+        doc: 'Entra IdP SAML SSO (sign-on) URL',
+        format: String,
+        default: '',
+        env: 'ENTRA_SAML_IDP_SSO_URL'
+      },
+      idpCertificate: {
+        doc: 'Entra IdP token-signing certificate (PEM/base64) to verify assertions',
+        format: String,
+        default: '',
+        env: 'ENTRA_SAML_IDP_CERTIFICATE'
+      },
+      spEntityId: {
+        doc: 'Our SP entityID (identifier) registered on the Enterprise Application',
+        format: String,
+        default: '',
+        env: 'ENTRA_SAML_SP_ENTITY_ID'
+      },
+      acsPath: {
+        doc: 'Assertion Consumer Service (reply) path on this app',
+        format: String,
+        default: '/auth/entra/saml/acs',
+        env: 'ENTRA_SAML_ACS_PATH'
+      },
+      signOutRedirectUrl: {
+        doc: 'Post-logout redirect URL',
+        format: String,
+        default: '/',
+        env: 'ENTRA_SAML_SIGN_OUT_REDIRECT_URL'
+      }
     }
   }
 })
