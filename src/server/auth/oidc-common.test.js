@@ -326,6 +326,18 @@ describe('#verifyIdToken', () => {
     ).toThrow(/expired/)
   })
 
+  test('rejects a token with no exp claim', () => {
+    expect(() =>
+      verifyIdToken(validToken({ exp: undefined }), verifyOpts())
+    ).toThrow(/expired or has no exp/)
+  })
+
+  test('rejects when the verify options omit issuer/audience/nonce', () => {
+    expect(() =>
+      verifyIdToken(validToken(), verifyOpts({ nonce: undefined }))
+    ).toThrow(/requires issuer, audience and nonce/)
+  })
+
   test('rejects a nonce mismatch', () => {
     expect(() =>
       verifyIdToken(validToken({ nonce: 'wrong' }), verifyOpts())

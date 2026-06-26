@@ -282,6 +282,21 @@ describe('#completeLiveDefraId', () => {
     ).rejects.toMatchObject({ statusCode: 401 })
   })
 
+  test('rejects a token that omits the nonce claim', async () => {
+    setLiveConfig()
+    stubLiveFlow(signedIdToken({ sub: 'p1' })) // no nonce claim
+    await expect(
+      completeLiveDefraId(
+        { code: 'c', state: 'st' },
+        {
+          state: 'st',
+          nonce: 'EXPECTED',
+          redirectUri: 'https://app.example/auth/defra-id/callback'
+        }
+      )
+    ).rejects.toMatchObject({ statusCode: 401 })
+  })
+
   const rejectsLive = (label, claims) =>
     test(label, async () => {
       setLiveConfig()

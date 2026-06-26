@@ -137,6 +137,7 @@ describe('#mapEntraClaimsToProfile', () => {
     expect(profile.email).toBe('co@defra.gov.uk')
     expect(profile.role).toBe('case_officer')
     expect(profile.hasCaseOfficerRole).toBe(true)
+    expect(profile.sessionId).toBe('s1')
   })
 
   test('does not flag or assign the case-officer role when absent', () => {

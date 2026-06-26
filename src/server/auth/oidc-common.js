@@ -299,6 +299,15 @@ export function verifyIdToken(idToken, options = {}) {
     throw createHttpError(HTTP_UNAUTHORIZED, 'No ID token provided')
   }
 
+  // Require the expectations to be present, so the iss/aud/nonce checks can't pass
+  // by both sides being undefined (undefined !== undefined === false).
+  if (!options.issuer || !options.audience || !options.nonce) {
+    throw createHttpError(
+      HTTP_UNAUTHORIZED,
+      'ID token verification requires issuer, audience and nonce'
+    )
+  }
+
   const segments = idToken.split('.')
   if (segments.length !== JWT_SEGMENTS) {
     throw createHttpError(HTTP_UNAUTHORIZED, 'Malformed ID token')
