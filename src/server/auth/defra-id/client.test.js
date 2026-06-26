@@ -297,6 +297,8 @@ describe('#completeLiveDefraId', () => {
     ).rejects.toMatchObject({ statusCode: 401 })
   })
 
+  // Timing/kid edge cases (no-exp, nbf, future-iat, no-kid) live in
+  // oidc-common.test.js; these integration cases cover the wire-up of the checks.
   const rejectsLive = (label, claims) =>
     test(label, async () => {
       setLiveConfig()

@@ -328,7 +328,7 @@ export function verifyIdToken(idToken, options = {}) {
     issuer: options.issuer,
     audience: options.audience,
     nonce: options.nonce,
-    now: options.now || Date.now(),
+    now: options.now ?? Date.now(),
     clockToleranceSec: options.clockToleranceSec ?? DEFAULT_CLOCK_TOLERANCE_SEC
   })
 
