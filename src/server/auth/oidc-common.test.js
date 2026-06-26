@@ -332,6 +332,33 @@ describe('#verifyIdToken', () => {
     ).toThrow(/nonce/)
   })
 
+  test('rejects a token that is not yet valid (nbf in the future)', () => {
+    const nowSec = Math.floor(Date.now() / 1000)
+    expect(() =>
+      verifyIdToken(validToken({ nbf: nowSec + 600 }), verifyOpts())
+    ).toThrow(/not yet valid/)
+  })
+
+  test('rejects a token issued in the future (iat)', () => {
+    const nowSec = Math.floor(Date.now() / 1000)
+    expect(() =>
+      verifyIdToken(validToken({ iat: nowSec + 600 }), verifyOpts())
+    ).toThrow(/issued in the future/)
+  })
+
+  test('accepts a token with no kid when the JWKS has a single key', () => {
+    const noKidKey = generateTestKeyPair('')
+    const token = signIdToken(
+      idTokenClaims({ iss: ISSUER, aud: AUDIENCE, nonce: NONCE, sub: 's-2' }),
+      noKidKey
+    )
+    const claims = verifyIdToken(
+      token,
+      verifyOpts({ jwks: [noKidKey.publicJwk] })
+    )
+    expect(claims.sub).toBe('s-2')
+  })
+
   test('rejects a malformed or missing token', () => {
     expect(() => verifyIdToken('', verifyOpts())).toThrow(/No ID token/)
     expect(() => verifyIdToken('a.b', verifyOpts())).toThrow(/Malformed/)
