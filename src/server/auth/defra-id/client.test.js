@@ -156,7 +156,7 @@ describe('#mapDefraIdClaimsToProfile', () => {
       currentRelationshipId: 'rel-1',
       relationships: ['rel-1:org-1:Org One:::', 'rel-2:org-2:Org Two:::'],
       roles: 'applicant',
-      sid: 's1'
+      sessionId: 's1'
     })
 
     expect(profile.subject).toBe('p1')
@@ -165,6 +165,7 @@ describe('#mapDefraIdClaimsToProfile', () => {
     expect(profile.organisations[0].organisationName).toBe('Org One')
     expect(profile.roles).toEqual(['applicant'])
     expect(profile.role).toBe('applicant')
+    expect(profile.sessionId).toBe('s1')
   })
 
   test('tolerates object-form relationships', () => {
@@ -280,6 +281,28 @@ describe('#completeLiveDefraId', () => {
       )
     ).rejects.toMatchObject({ statusCode: 401 })
   })
+
+  const rejectsLive = (label, claims) =>
+    test(label, async () => {
+      setLiveConfig()
+      stubLiveFlow(signedIdToken({ sub: 'p1', nonce: 'N1', ...claims }))
+      await expect(
+        completeLiveDefraId(
+          { code: 'c', state: 'st' },
+          {
+            state: 'st',
+            nonce: 'N1',
+            redirectUri: 'https://app.example/auth/defra-id/callback'
+          }
+        )
+      ).rejects.toMatchObject({ statusCode: 401 })
+    })
+
+  rejectsLive('rejects an expired token', {
+    exp: Math.floor(Date.now() / 1000) - 120
+  })
+  rejectsLive('rejects a wrong-issuer token', { iss: 'https://evil.example/' })
+  rejectsLive('rejects a wrong-audience token', { aud: 'someone-else' })
 })
 
 describe('#buildDefraIdSignOutUrl', () => {

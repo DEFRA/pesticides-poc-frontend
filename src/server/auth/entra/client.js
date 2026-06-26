@@ -7,8 +7,8 @@
 // Authorization-code flow against Entra ID v2.0, endpoints discovered from the
 // tenant well-known URL, PKCE (S256) + state + nonce, claim map
 // (oid|sub -> subject, email|preferred_username -> email, app `roles` -> roles).
-// State, nonce and token expiry are checked; RS256/JWKS signature plus iss/aud
-// verification are the EQ-256 hardening follow-up. Production direction is SAML 2.0.
+// The ID token is fully verified via verifyIdToken (RS256/JWKS signature +
+// iss/aud/exp/nbf/iat/nonce). Production direction is SAML 2.0.
 
 import { randomUUID } from 'node:crypto'
 

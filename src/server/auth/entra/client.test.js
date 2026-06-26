@@ -246,6 +246,34 @@ describe('#completeLiveEntra (token validation)', () => {
       )
     ).rejects.toMatchObject({ statusCode: 401 })
   })
+
+  const rejectsLive = (label, claims) =>
+    test(label, async () => {
+      setLiveConfig()
+      const idToken = signedIdToken({
+        oid: 'oid-1',
+        roles: ['case_officer'],
+        nonce: 'N1',
+        ...claims
+      })
+      vi.stubGlobal(
+        'fetch',
+        stubFetch({
+          '.well-known': { body: DISCOVERY },
+          '/v2.0/token': { body: { id_token: idToken } },
+          '/keys': { body: { keys: [keyPair.publicJwk] } }
+        })
+      )
+      await expect(
+        completeLiveEntra(
+          { code: 'c', state: 'st' },
+          { state: 'st', nonce: 'N1', redirectUri: 'https://app/cb' }
+        )
+      ).rejects.toMatchObject({ statusCode: 401 })
+    })
+
+  rejectsLive('rejects a wrong-issuer token', { iss: 'https://evil.example/' })
+  rejectsLive('rejects a wrong-audience token', { aud: 'someone-else' })
 })
 
 describe('#buildEntraSignOutUrl', () => {

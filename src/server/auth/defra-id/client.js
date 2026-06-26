@@ -12,8 +12,8 @@
 //
 // Framework-agnostic: node:crypto + fetch only (shared plumbing in ../oidc-common.js);
 // the Hapi layer passes a `baseUrl` string. Authorization-code + PKCE (S256) + state.
-// State, nonce and token expiry are checked; RS256/JWKS signature plus iss/aud
-// verification are the EQ-256 hardening follow-up.
+// The ID token is fully verified via verifyIdToken (RS256/JWKS signature + iss/aud/
+// exp/nbf/iat/nonce).
 
 import { randomUUID } from 'node:crypto'
 

@@ -29,12 +29,20 @@ export function generateTestKeyPair(kid = 'test-key-1') {
  * @param {object} payload token claims
  * @param {{ privateKey: import('node:crypto').KeyObject, kid: string, alg?: string }} options
  */
+const RS_ALG_TO_HASH = {
+  RS256: 'RSA-SHA256',
+  RS384: 'RSA-SHA384',
+  RS512: 'RSA-SHA512'
+}
+
 export function signIdToken(payload, { privateKey, kid, alg = 'RS256' }) {
   const signingInput = `${base64url(
     JSON.stringify({ alg, typ: 'JWT', kid })
   )}.${base64url(JSON.stringify(payload))}`
 
-  const signer = createSign('RSA-SHA256')
+  // Sign with the hash that matches the header `alg` (so a token claiming RS384 is
+  // actually signed with SHA-384), not a hardcoded one.
+  const signer = createSign(RS_ALG_TO_HASH[alg] || RS_ALG_TO_HASH.RS256)
   signer.update(signingInput)
   signer.end()
 

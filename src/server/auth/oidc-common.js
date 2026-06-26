@@ -14,6 +14,7 @@ export const HTTP_UNAUTHORIZED = 401
 const PKCE_VERIFIER_BYTES = 48
 const DEFAULT_CLOCK_TOLERANCE_SEC = 60
 const MS_PER_SEC = 1000
+const JWT_SEGMENTS = 3 // header.payload.signature
 
 // JWT `alg` -> Node verify algorithm. RSA only (Entra/B2C sign ID tokens with RS256).
 const JWT_ALG_TO_HASH = {
@@ -203,11 +204,12 @@ export async function loadJwks(jwksUri, cache, errorMessage) {
 
 function selectSigningKey(jwks, header) {
   const keys = jwks || []
-  // When the token names a key id, it must match; only fall back to a sole key
-  // if the token carries no kid at all.
+  // When the token names a key id, it MUST match (no fall-through to another key).
   if (header.kid) {
     return keys.find((key) => key.kid === header.kid) || null
   }
+  // B2C/Entra always set `kid`, so this branch is a defensive fallback for tokens
+  // (e.g. test fixtures) with no kid: accept only when the JWKS has exactly one key.
   return keys.length === 1 ? keys[0] : null
 }
 
@@ -242,33 +244,47 @@ function verifyJwtSignature(signingInput, signatureB64, header, jwks) {
   }
 }
 
-// Validate the standard ID token claims (issuer, audience, expiry, nonce).
-function assertIdTokenClaims(claims, options) {
-  const { issuer, audience, nonce, now, clockToleranceSec } = options
-  const nowSec = Math.floor(now / MS_PER_SEC)
+// Match checks: iss/aud/nonce must equal what we expect. These are UNCONDITIONAL —
+// skipping a check when the expectation is falsy would be a fail-open hole (e.g. a
+// missing configured issuer, or a token that omits `nonce`, would pass).
+function assertClaimMatch(claims, { issuer, audience, nonce }) {
   const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud]
-
-  if (issuer && claims.iss !== issuer) {
+  if (claims.iss !== issuer) {
     throw createHttpError(HTTP_UNAUTHORIZED, 'ID token issuer mismatch')
   }
-  if (audience && !audiences.includes(audience)) {
+  if (!audiences.includes(audience)) {
     throw createHttpError(HTTP_UNAUTHORIZED, 'ID token audience mismatch')
   }
-  if (
-    typeof claims.exp === 'number' &&
-    nowSec > claims.exp + clockToleranceSec
-  ) {
-    throw createHttpError(HTTP_UNAUTHORIZED, 'ID token has expired')
-  }
-  if (
-    typeof claims.iat === 'number' &&
-    claims.iat > nowSec + clockToleranceSec
-  ) {
-    throw createHttpError(HTTP_UNAUTHORIZED, 'ID token issued in the future')
-  }
-  if (nonce && claims.nonce !== nonce) {
+  if (claims.nonce !== nonce) {
     throw createHttpError(HTTP_UNAUTHORIZED, 'ID token nonce validation failed')
   }
+}
+
+// Timing checks. `exp` is REQUIRED (a token with no expiry is treated as invalid);
+// `nbf`/`iat` are validated when present, within the clock-skew tolerance.
+function assertClaimTiming(claims, nowSec, skewSec) {
+  if (typeof claims.exp !== 'number' || nowSec > claims.exp + skewSec) {
+    throw createHttpError(
+      HTTP_UNAUTHORIZED,
+      'ID token has expired or has no exp'
+    )
+  }
+  if (typeof claims.nbf === 'number' && nowSec < claims.nbf - skewSec) {
+    throw createHttpError(HTTP_UNAUTHORIZED, 'ID token is not yet valid (nbf)')
+  }
+  if (typeof claims.iat === 'number' && claims.iat > nowSec + skewSec) {
+    throw createHttpError(HTTP_UNAUTHORIZED, 'ID token issued in the future')
+  }
+}
+
+// Validate the standard ID token claims (issuer, audience, expiry/nbf/iat, nonce).
+function assertIdTokenClaims(claims, options) {
+  assertClaimMatch(claims, options)
+  assertClaimTiming(
+    claims,
+    Math.floor(options.now / MS_PER_SEC),
+    options.clockToleranceSec
+  )
 }
 
 // Verify an ID token end-to-end: RSA signature against the JWKS, then the
@@ -279,7 +295,7 @@ export function verifyIdToken(idToken, options = {}) {
   }
 
   const segments = idToken.split('.')
-  if (segments.length !== 3) {
+  if (segments.length !== JWT_SEGMENTS) {
     throw createHttpError(HTTP_UNAUTHORIZED, 'Malformed ID token')
   }
 
