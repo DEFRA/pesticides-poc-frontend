@@ -2,3 +2,16 @@
 package-lock.json
 node_modules
 coverage
+
+# Local working docs (git-ignored locally; hand-formatted for wiki/Confluence
+# pasting, not part of the repo) — don't gate commits on their formatting.
+# The tracked docs/auth/AUTH-ARCHITECTURE.md and LIVE-CONFIG.md stay checked.
+docs/auth/wiki-*.md
+docs/auth/applicant-*.md
+docs/auth/caseofficer-*.md
+docs/auth/meta-*.md
+docs/auth/shared-*.md
+docs/auth/entra-oidc.env.local.template
+docs/walkthroughs/
+docs/PesticidesLoginDocs/
+.claude/
