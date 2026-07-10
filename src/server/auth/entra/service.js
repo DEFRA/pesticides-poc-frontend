@@ -1,7 +1,7 @@
 // Microsoft Entra ID sign-in orchestration — INTERNAL case officers / staff.
 //
-// Mirrors the Defra Identity service but for the staff IdP (interim OIDC; SAML 2.0
-// in production). Dispatches mock vs live over the framework-agnostic ./client.js.
+// Mirrors the Defra Identity service but for the staff IdP (OIDC auth-code + PKCE).
+// Dispatches mock vs live over the framework-agnostic ./client.js.
 // Staff have no external-organisation context. See docs/auth/AUTH-ARCHITECTURE.md.
 
 import { config } from '#/config/config.js'

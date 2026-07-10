@@ -57,8 +57,9 @@ claim names (no code change needed). All non-sensitive.
 
 ## Case officer — Microsoft Entra ID
 
-Source: **Defra Entra ID / tenant admin team**. (Interim OIDC; SAML 2.0 is the agreed
-production direction — pending confirmation with the architect.)
+Source: **Defra Entra ID / tenant admin team**. Authentication is **OIDC
+(auth-code + PKCE)** — agreed with the architect/team (2026-07-07) as the Defra
+standard for new apps per the CCoE guardrail pattern.
 
 | Variable                        | Required | Sensitive | Default                | Description                                            |
 | ------------------------------- | -------- | --------- | ---------------------- | ------------------------------------------------------ |

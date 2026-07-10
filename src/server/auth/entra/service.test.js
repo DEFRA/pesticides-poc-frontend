@@ -7,20 +7,24 @@ import {
   startEntraSignIn
 } from './service.js'
 import { getAuthSession } from '../session.js'
+import {
+  generateTestKeyPair,
+  idTokenClaims,
+  signIdToken
+} from '#/test-helpers/oidc-test-keys.js'
 
+const ISSUER = 'https://login.microsoftonline.com/tid/v2.0'
 const DISCOVERY = {
+  issuer: ISSUER,
   authorization_endpoint:
     'https://login.microsoftonline.com/tid/oauth2/v2.0/authorize',
   token_endpoint: 'https://login.microsoftonline.com/tid/oauth2/v2.0/token',
+  jwks_uri: 'https://login.microsoftonline.com/tid/discovery/v2.0/keys',
   end_session_endpoint:
     'https://login.microsoftonline.com/tid/oauth2/v2.0/logout'
 }
 
-function jwt(payload) {
-  const enc = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url')
-  const withExp = { exp: Math.floor(Date.now() / 1000) + 3600, ...payload }
-  return `${enc({ alg: 'none', typ: 'JWT' })}.${enc(withExp)}.sig`
-}
+const keyPair = generateTestKeyPair('entra-svc-kid')
 
 function stubFetch(routes) {
   return vi.fn(async (url) => {
@@ -88,19 +92,25 @@ describe('#startEntraSignIn / #completeEntraCallback (live)', () => {
     expect(start.mode).toBe('live')
 
     const pending = getAuthSession(request)
-    const idToken = jwt({
-      oid: 'oid-1',
-      preferred_username: 'co@defra.gov.uk',
-      roles: ['case_officer'],
-      nonce: pending.pendingNonce
-    })
+    const idToken = signIdToken(
+      idTokenClaims({
+        iss: ISSUER,
+        aud: 'entra-client',
+        oid: 'oid-1',
+        preferred_username: 'co@defra.gov.uk',
+        roles: ['case_officer'],
+        nonce: pending.pendingNonce
+      }),
+      keyPair
+    )
     vi.stubGlobal(
       'fetch',
       stubFetch({
         '.well-known': { body: DISCOVERY },
         '/v2.0/token': {
           body: { id_token: idToken, token_type: 'Bearer', expires_in: 3600 }
-        }
+        },
+        '/keys': { body: { keys: [keyPair.publicJwk] } }
       })
     )
 

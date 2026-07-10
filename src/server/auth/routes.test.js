@@ -2,6 +2,11 @@ import { config } from '#/config/config.js'
 
 import { createServer } from '#/server/server.js'
 import { statusCodes } from '#/server/common/constants/status-codes.js'
+import {
+  generateTestKeyPair,
+  idTokenClaims,
+  signIdToken
+} from '#/test-helpers/oidc-test-keys.js'
 
 // Carry the yar session cookie between injected requests.
 function cookieFrom(response) {
@@ -370,5 +375,109 @@ describe('#register journey (applicant guard)', () => {
       headers: { cookie: sessionCookie }
     })
     expect(register.statusCode).toBe(statusCodes.notFound)
+  })
+})
+
+describe('#auth callback error status (thrown statusCode survives to the HTTP response)', () => {
+  // Regression: auth errors are plain Errors carrying a statusCode; Hapi boomifies
+  // a non-Boom throw to 500, so without the catch-all recovering the intended code
+  // these came back as 500 instead of 422/401.
+  test('a Defra Identity callback with an invalid state returns 422, not 500', async () => {
+    const { statusCode } = await server.inject({
+      method: 'GET',
+      url: '/auth/defra-id/callback?code=mock-auth-code&state=invalid-state'
+    })
+    expect(statusCode).toBe(statusCodes.unprocessableEntity)
+  })
+
+  test('an Entra callback with an invalid state returns 422, not 500', async () => {
+    const { statusCode } = await server.inject({
+      method: 'GET',
+      url: '/auth/entra/callback?code=mock-auth-code&state=invalid-state'
+    })
+    expect(statusCode).toBe(statusCodes.unprocessableEntity)
+  })
+})
+
+describe('#auth callback error status (live-mode token failure surfaces as 401)', () => {
+  // The 422 cases above cover invalid state; this proves the OTHER recovered code
+  // — a thrown 401 from ID-token verification — also survives Hapi's boomify to
+  // the HTTP response via resolveStatusCode, not just in the client unit tests.
+  // The catch-all is provider-agnostic, so one provider exercises the 401 path.
+  const ISSUER = 'https://login.microsoftonline.com/tid/v2.0'
+  const DISCOVERY = {
+    issuer: ISSUER,
+    authorization_endpoint:
+      'https://login.microsoftonline.com/tid/oauth2/v2.0/authorize',
+    token_endpoint: 'https://login.microsoftonline.com/tid/oauth2/v2.0/token',
+    jwks_uri: 'https://login.microsoftonline.com/tid/discovery/v2.0/keys'
+  }
+  const keyPair = generateTestKeyPair('entra-kid-1')
+
+  function stubFetch(routes) {
+    return vi.fn(async (url) => {
+      const key = Object.keys(routes).find((part) => String(url).includes(part))
+      const route = key ? routes[key] : { ok: false, status: 404, body: {} }
+      return {
+        ok: route.ok !== false,
+        status: route.status || 200,
+        headers: { get: () => 'application/json' },
+        text: async () => JSON.stringify(route.body ?? {})
+      }
+    })
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    config.set('auth.entra.mode', 'mock')
+  })
+
+  test('an Entra live callback with an invalid ID token returns 401, not 500', async () => {
+    config.set('auth.entra.mode', 'live')
+    config.set('auth.entra.tenantId', 'tid')
+    config.set('auth.entra.clientId', 'entra-client')
+    config.set('auth.entra.clientSecret', 'entra-secret')
+
+    // Correctly signed (its key is in the JWKS) but with the wrong issuer, so
+    // verifyIdToken passes the signature check then throws 401 on the issuer.
+    const badIdToken = signIdToken(
+      idTokenClaims({
+        iss: 'https://evil.example/',
+        aud: 'entra-client',
+        oid: 'oid-1',
+        roles: ['case_officer'],
+        nonce: 'whatever'
+      }),
+      keyPair
+    )
+    vi.stubGlobal(
+      'fetch',
+      stubFetch({
+        '.well-known': { body: DISCOVERY },
+        '/v2.0/token': {
+          body: { id_token: badIdToken, token_type: 'Bearer', expires_in: 3600 }
+        },
+        '/keys': { body: { keys: [keyPair.publicJwk] } }
+      })
+    )
+
+    // Live /start seeds state/nonce/pkce/redirectUri into the session; carry the
+    // cookie + captured state into the callback so it reaches token verification.
+    const start = await server.inject({
+      method: 'GET',
+      url: '/auth/entra/start'
+    })
+    const state = new URL(
+      start.headers.location,
+      'http://localhost'
+    ).searchParams.get('state')
+
+    const callback = await server.inject({
+      method: 'GET',
+      url: `/auth/entra/callback?code=code-1&state=${state}`,
+      headers: { cookie: cookieFrom(start) }
+    })
+
+    expect(callback.statusCode).toBe(statusCodes.unauthorized)
   })
 })

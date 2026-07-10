@@ -6,12 +6,19 @@ import {
   firstNonEmpty,
   fromBase64Url,
   loadDiscovery,
+  loadJwks,
   normaliseTokenResponse,
   parseJsonSafe,
   resolveUrl,
   toBase64Url,
-  toStringArray
+  toStringArray,
+  verifyIdToken
 } from './oidc-common.js'
+import {
+  generateTestKeyPair,
+  idTokenClaims,
+  signIdToken
+} from '#/test-helpers/oidc-test-keys.js'
 
 function jsonResponse(body, ok = true, status = 200) {
   return {
@@ -224,5 +231,146 @@ describe('#exchangeCodeForTokens', () => {
       exchangeCodeForTokens(spec, 'code', 'https://app/cb', 'verifier')
     ).rejects.toMatchObject({ statusCode: 400 })
     vi.unstubAllGlobals()
+  })
+})
+
+describe('#loadJwks', () => {
+  test('returns the keys array from the JWKS document', async () => {
+    const keys = [{ kid: 'k1' }, { kid: 'k2' }]
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse({ keys }))
+    )
+    expect(await loadJwks('https://idp/keys', {}, 'err')).toEqual(keys)
+    vi.unstubAllGlobals()
+  })
+
+  test('returns [] when the document has no keys', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse({}))
+    )
+    expect(await loadJwks('https://idp/keys', {}, 'err')).toEqual([])
+    vi.unstubAllGlobals()
+  })
+})
+
+describe('#verifyIdToken', () => {
+  const ISSUER = 'https://idp.example/'
+  const AUDIENCE = 'client-123'
+  const NONCE = 'nonce-1'
+  const keyPair = generateTestKeyPair('kid-1')
+
+  const validToken = (overrides = {}) =>
+    signIdToken(
+      idTokenClaims({
+        iss: ISSUER,
+        aud: AUDIENCE,
+        nonce: NONCE,
+        sub: 'subject-1',
+        ...overrides
+      }),
+      keyPair
+    )
+
+  const verifyOpts = (overrides = {}) => ({
+    jwks: [keyPair.publicJwk],
+    issuer: ISSUER,
+    audience: AUDIENCE,
+    nonce: NONCE,
+    ...overrides
+  })
+
+  test('returns the claims for a valid, correctly-signed token', () => {
+    const claims = verifyIdToken(validToken(), verifyOpts())
+    expect(claims.sub).toBe('subject-1')
+  })
+
+  test('rejects a token signed by a different key (bad signature)', () => {
+    const otherKey = generateTestKeyPair('kid-1')
+    const token = signIdToken(
+      idTokenClaims({ iss: ISSUER, aud: AUDIENCE, nonce: NONCE }),
+      otherKey
+    )
+    expect(() => verifyIdToken(token, verifyOpts())).toThrow(/signature/)
+  })
+
+  test('rejects an unknown algorithm (e.g. alg none)', () => {
+    const enc = (o) => Buffer.from(JSON.stringify(o)).toString('base64url')
+    const token = `${enc({ alg: 'none', typ: 'JWT' })}.${enc({ sub: 'x' })}.`
+    expect(() => verifyIdToken(token, verifyOpts())).toThrow(/algorithm/)
+  })
+
+  test('rejects when no JWKS key matches the kid', () => {
+    expect(() =>
+      verifyIdToken(validToken(), verifyOpts({ jwks: [{ kid: 'other' }] }))
+    ).toThrow(/No matching JWKS key/)
+  })
+
+  test('rejects an issuer mismatch', () => {
+    expect(() =>
+      verifyIdToken(validToken(), verifyOpts({ issuer: 'https://evil/' }))
+    ).toThrow(/issuer/)
+  })
+
+  test('rejects an audience mismatch', () => {
+    expect(() =>
+      verifyIdToken(validToken(), verifyOpts({ audience: 'other-client' }))
+    ).toThrow(/audience/)
+  })
+
+  test('rejects an expired token', () => {
+    const nowSec = Math.floor(Date.now() / 1000)
+    expect(() =>
+      verifyIdToken(validToken({ exp: nowSec - 600 }), verifyOpts())
+    ).toThrow(/expired/)
+  })
+
+  test('rejects a token with no exp claim', () => {
+    expect(() =>
+      verifyIdToken(validToken({ exp: undefined }), verifyOpts())
+    ).toThrow(/expired or has no exp/)
+  })
+
+  test('rejects when the verify options omit issuer/audience/nonce', () => {
+    expect(() =>
+      verifyIdToken(validToken(), verifyOpts({ nonce: undefined }))
+    ).toThrow(/requires issuer, audience and nonce/)
+  })
+
+  test('rejects a nonce mismatch', () => {
+    expect(() =>
+      verifyIdToken(validToken({ nonce: 'wrong' }), verifyOpts())
+    ).toThrow(/nonce/)
+  })
+
+  test('rejects a token that is not yet valid (nbf in the future)', () => {
+    const nowSec = Math.floor(Date.now() / 1000)
+    expect(() =>
+      verifyIdToken(validToken({ nbf: nowSec + 600 }), verifyOpts())
+    ).toThrow(/not yet valid/)
+  })
+
+  test('rejects a token issued in the future (iat)', () => {
+    const nowSec = Math.floor(Date.now() / 1000)
+    expect(() =>
+      verifyIdToken(validToken({ iat: nowSec + 600 }), verifyOpts())
+    ).toThrow(/issued in the future/)
+  })
+
+  test('rejects a token with no kid (must name its signing key)', () => {
+    const noKidKey = generateTestKeyPair('')
+    const token = signIdToken(
+      idTokenClaims({ iss: ISSUER, aud: AUDIENCE, nonce: NONCE, sub: 's-2' }),
+      noKidKey
+    )
+    expect(() =>
+      verifyIdToken(token, verifyOpts({ jwks: [noKidKey.publicJwk] }))
+    ).toThrow(/No matching JWKS key/)
+  })
+
+  test('rejects a malformed or missing token', () => {
+    expect(() => verifyIdToken('', verifyOpts())).toThrow(/No ID token/)
+    expect(() => verifyIdToken('a.b', verifyOpts())).toThrow(/Malformed/)
   })
 })

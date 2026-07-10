@@ -1,6 +1,6 @@
 // Auth feature plugin — registers the two identity populations:
 //   - Defra Customer Identity (B2C) for EXTERNAL applicants
-//   - Entra ID for INTERNAL case officers (interim OIDC; SAML in production)
+//   - Entra ID for INTERNAL case officers (OIDC auth-code + PKCE)
 // Wired into the router plugin. See docs/auth/AUTH-ARCHITECTURE.md.
 
 import { defraIdRoutes } from './defra-id/routes.js'

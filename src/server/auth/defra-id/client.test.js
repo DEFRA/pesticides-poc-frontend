@@ -8,21 +8,30 @@ import {
   mapDefraIdClaimsToProfile,
   startLiveDefraId
 } from './client.js'
+import {
+  generateTestKeyPair,
+  idTokenClaims,
+  signIdToken
+} from '#/test-helpers/oidc-test-keys.js'
 
 const WELL_KNOWN = 'https://b2c.example.com/te/.well-known/openid-configuration'
+const ISSUER = 'https://b2c.example.com/'
 const DISCOVERY = {
+  issuer: ISSUER,
   authorization_endpoint: 'https://b2c.example.com/authorize',
   token_endpoint: 'https://b2c.example.com/oauth/token',
+  jwks_uri: 'https://b2c.example.com/discovery/keys',
   end_session_endpoint: 'https://b2c.example.com/logout'
 }
 
-// Build an unsigned JWT (the client decodes the payload; RS256/JWKS verification is
-// the EQ-256 follow-up so the signature is not checked). A valid far-future exp is
-// injected by default so callers only set exp when they want to test expiry.
-function jwt(payload) {
-  const enc = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url')
-  const withExp = { exp: Math.floor(Date.now() / 1000) + 3600, ...payload }
-  return `${enc({ alg: 'none', typ: 'JWT' })}.${enc(withExp)}.sig`
+const keyPair = generateTestKeyPair('defra-kid-1')
+
+// A signed ID token with valid issuer/audience defaults for `client-123`.
+function signedIdToken(claims) {
+  return signIdToken(
+    idTokenClaims({ iss: ISSUER, aud: 'client-123', ...claims }),
+    keyPair
+  )
 }
 
 // Route fetch by URL substring so discovery + token endpoints can be stubbed together.
@@ -201,29 +210,30 @@ describe('#mapDefraIdClaimsToProfile', () => {
 })
 
 describe('#completeLiveDefraId', () => {
-  test('exchanges the code and returns the mapped profile', async () => {
-    setLiveConfig()
-    const idToken = jwt({
-      sub: 'p1',
-      email: 'alex@example.com',
-      firstName: 'Alex',
-      lastName: 'Grower',
-      currentRelationshipId: 'rel-1',
-      relationships: ['rel-1:org-1:Org One:::'],
-      nonce: 'N1'
-    })
+  function stubLiveFlow(idToken) {
     vi.stubGlobal(
       'fetch',
       stubFetch({
         '.well-known': { body: DISCOVERY },
         '/oauth/token': {
-          body: {
-            id_token: idToken,
-            access_token: 'at',
-            token_type: 'Bearer',
-            expires_in: 3600
-          }
-        }
+          body: { id_token: idToken, token_type: 'Bearer', expires_in: 3600 }
+        },
+        '/discovery/keys': { body: { keys: [keyPair.publicJwk] } }
+      })
+    )
+  }
+
+  test('exchanges the code, verifies the ID token, and maps the profile', async () => {
+    setLiveConfig()
+    stubLiveFlow(
+      signedIdToken({
+        sub: 'p1',
+        email: 'alex@example.com',
+        firstName: 'Alex',
+        lastName: 'Grower',
+        currentRelationshipId: 'rel-1',
+        relationships: ['rel-1:org-1:Org One:::'],
+        nonce: 'N1'
       })
     )
 
@@ -256,66 +266,60 @@ describe('#completeLiveDefraId', () => {
       completeLiveDefraId({ state: 'st' }, { state: 'st' })
     ).rejects.toMatchObject({ statusCode: 422 })
   })
-})
 
-describe('#completeLiveDefraId (token validation)', () => {
-  test('rejects a mismatched nonce', async () => {
+  test('rejects a token whose nonce does not match', async () => {
     setLiveConfig()
-    const idToken = jwt({ sub: 'p1', nonce: 'WRONG' })
-    vi.stubGlobal(
-      'fetch',
-      stubFetch({
-        '.well-known': { body: DISCOVERY },
-        '/oauth/token': { body: { id_token: idToken } }
-      })
-    )
+    stubLiveFlow(signedIdToken({ sub: 'p1', nonce: 'WRONG' }))
     await expect(
       completeLiveDefraId(
         { code: 'c', state: 'st' },
-        { state: 'st', nonce: 'EXPECTED', redirectUri: 'https://app/cb' }
+        {
+          state: 'st',
+          nonce: 'EXPECTED',
+          redirectUri: 'https://app.example/auth/defra-id/callback'
+        }
       )
-    ).rejects.toMatchObject({ statusCode: 422 })
+    ).rejects.toMatchObject({ statusCode: 401 })
   })
 
   test('rejects a token that omits the nonce claim', async () => {
     setLiveConfig()
-    const idToken = jwt({ sub: 'p1' }) // no nonce
-    vi.stubGlobal(
-      'fetch',
-      stubFetch({
-        '.well-known': { body: DISCOVERY },
-        '/oauth/token': { body: { id_token: idToken } }
-      })
-    )
+    stubLiveFlow(signedIdToken({ sub: 'p1' })) // no nonce claim
     await expect(
       completeLiveDefraId(
         { code: 'c', state: 'st' },
-        { state: 'st', nonce: 'EXPECTED', redirectUri: 'https://app/cb' }
+        {
+          state: 'st',
+          nonce: 'EXPECTED',
+          redirectUri: 'https://app.example/auth/defra-id/callback'
+        }
       )
-    ).rejects.toMatchObject({ statusCode: 422 })
+    ).rejects.toMatchObject({ statusCode: 401 })
   })
 
-  test('rejects an expired token', async () => {
-    setLiveConfig()
-    const idToken = jwt({
-      sub: 'p1',
-      nonce: 'N1',
-      exp: Math.floor(Date.now() / 1000) - 60 // already expired
+  // Timing/kid edge cases (no-exp, nbf, future-iat, no-kid) live in
+  // oidc-common.test.js; these integration cases cover the wire-up of the checks.
+  const rejectsLive = (label, claims) =>
+    test(label, async () => {
+      setLiveConfig()
+      stubLiveFlow(signedIdToken({ sub: 'p1', nonce: 'N1', ...claims }))
+      await expect(
+        completeLiveDefraId(
+          { code: 'c', state: 'st' },
+          {
+            state: 'st',
+            nonce: 'N1',
+            redirectUri: 'https://app.example/auth/defra-id/callback'
+          }
+        )
+      ).rejects.toMatchObject({ statusCode: 401 })
     })
-    vi.stubGlobal(
-      'fetch',
-      stubFetch({
-        '.well-known': { body: DISCOVERY },
-        '/oauth/token': { body: { id_token: idToken } }
-      })
-    )
-    await expect(
-      completeLiveDefraId(
-        { code: 'c', state: 'st' },
-        { state: 'st', nonce: 'N1', redirectUri: 'https://app/cb' }
-      )
-    ).rejects.toMatchObject({ statusCode: 422 })
+
+  rejectsLive('rejects an expired token', {
+    exp: Math.floor(Date.now() / 1000) - 120
   })
+  rejectsLive('rejects a wrong-issuer token', { iss: 'https://evil.example/' })
+  rejectsLive('rejects a wrong-audience token', { aud: 'someone-else' })
 })
 
 describe('#buildDefraIdSignOutUrl', () => {

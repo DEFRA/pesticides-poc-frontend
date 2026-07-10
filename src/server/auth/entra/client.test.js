@@ -9,21 +9,30 @@ import {
   mapEntraClaimsToProfile,
   startLiveEntra
 } from './client.js'
+import {
+  generateTestKeyPair,
+  idTokenClaims,
+  signIdToken
+} from '#/test-helpers/oidc-test-keys.js'
 
+const ISSUER = 'https://login.microsoftonline.com/tid/v2.0'
 const DISCOVERY = {
+  issuer: ISSUER,
   authorization_endpoint:
     'https://login.microsoftonline.com/tid/oauth2/v2.0/authorize',
   token_endpoint: 'https://login.microsoftonline.com/tid/oauth2/v2.0/token',
+  jwks_uri: 'https://login.microsoftonline.com/tid/discovery/v2.0/keys',
   end_session_endpoint:
     'https://login.microsoftonline.com/tid/oauth2/v2.0/logout'
 }
 
-// Unsigned JWT with a default (valid, far-future) exp so callers only set exp when
-// they want to test expiry. JWKS signature verification is the EQ-256 follow-up.
-function jwt(payload) {
-  const enc = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url')
-  const withExp = { exp: Math.floor(Date.now() / 1000) + 3600, ...payload }
-  return `${enc({ alg: 'none', typ: 'JWT' })}.${enc(withExp)}.sig`
+const keyPair = generateTestKeyPair('entra-kid-1')
+
+function signedIdToken(claims) {
+  return signIdToken(
+    idTokenClaims({ iss: ISSUER, aud: 'entra-client', ...claims }),
+    keyPair
+  )
 }
 
 function stubFetch(routes) {
@@ -128,6 +137,7 @@ describe('#mapEntraClaimsToProfile', () => {
     expect(profile.email).toBe('co@defra.gov.uk')
     expect(profile.role).toBe('case_officer')
     expect(profile.hasCaseOfficerRole).toBe(true)
+    expect(profile.sessionId).toBe('s1')
   })
 
   test('does not flag or assign the case-officer role when absent', () => {
@@ -149,9 +159,9 @@ describe('#mapEntraClaimsToProfile', () => {
 })
 
 describe('#completeLiveEntra', () => {
-  test('exchanges the code and returns the mapped staff profile', async () => {
+  test('exchanges the code, verifies the ID token, and maps the staff profile', async () => {
     setLiveConfig()
-    const idToken = jwt({
+    const idToken = signedIdToken({
       oid: 'oid-1',
       preferred_username: 'co@defra.gov.uk',
       given_name: 'Casey',
@@ -164,13 +174,9 @@ describe('#completeLiveEntra', () => {
       stubFetch({
         '.well-known': { body: DISCOVERY },
         '/v2.0/token': {
-          body: {
-            id_token: idToken,
-            access_token: 'at',
-            token_type: 'Bearer',
-            expires_in: 3600
-          }
-        }
+          body: { id_token: idToken, token_type: 'Bearer', expires_in: 3600 }
+        },
+        '/keys': { body: { keys: [keyPair.publicJwk] } }
       })
     )
 
@@ -201,12 +207,13 @@ describe('#completeLiveEntra', () => {
 describe('#completeLiveEntra (token validation)', () => {
   test('rejects a token that omits the nonce claim', async () => {
     setLiveConfig()
-    const idToken = jwt({ oid: 'oid-1', roles: ['case_officer'] }) // no nonce
+    const idToken = signedIdToken({ oid: 'oid-1', roles: ['case_officer'] }) // no nonce
     vi.stubGlobal(
       'fetch',
       stubFetch({
         '.well-known': { body: DISCOVERY },
-        '/v2.0/token': { body: { id_token: idToken } }
+        '/v2.0/token': { body: { id_token: idToken } },
+        '/keys': { body: { keys: [keyPair.publicJwk] } }
       })
     )
     await expect(
@@ -214,22 +221,23 @@ describe('#completeLiveEntra (token validation)', () => {
         { code: 'c', state: 'st' },
         { state: 'st', nonce: 'EXPECTED', redirectUri: 'https://app/cb' }
       )
-    ).rejects.toMatchObject({ statusCode: 422 })
+    ).rejects.toMatchObject({ statusCode: 401 })
   })
 
   test('rejects an expired token', async () => {
     setLiveConfig()
-    const idToken = jwt({
+    const idToken = signedIdToken({
       oid: 'oid-1',
       roles: ['case_officer'],
       nonce: 'N1',
-      exp: Math.floor(Date.now() / 1000) - 60 // already expired
+      exp: Math.floor(Date.now() / 1000) - 120 // already expired (beyond clock skew)
     })
     vi.stubGlobal(
       'fetch',
       stubFetch({
         '.well-known': { body: DISCOVERY },
-        '/v2.0/token': { body: { id_token: idToken } }
+        '/v2.0/token': { body: { id_token: idToken } },
+        '/keys': { body: { keys: [keyPair.publicJwk] } }
       })
     )
     await expect(
@@ -237,8 +245,36 @@ describe('#completeLiveEntra (token validation)', () => {
         { code: 'c', state: 'st' },
         { state: 'st', nonce: 'N1', redirectUri: 'https://app/cb' }
       )
-    ).rejects.toMatchObject({ statusCode: 422 })
+    ).rejects.toMatchObject({ statusCode: 401 })
   })
+
+  const rejectsLive = (label, claims) =>
+    test(label, async () => {
+      setLiveConfig()
+      const idToken = signedIdToken({
+        oid: 'oid-1',
+        roles: ['case_officer'],
+        nonce: 'N1',
+        ...claims
+      })
+      vi.stubGlobal(
+        'fetch',
+        stubFetch({
+          '.well-known': { body: DISCOVERY },
+          '/v2.0/token': { body: { id_token: idToken } },
+          '/keys': { body: { keys: [keyPair.publicJwk] } }
+        })
+      )
+      await expect(
+        completeLiveEntra(
+          { code: 'c', state: 'st' },
+          { state: 'st', nonce: 'N1', redirectUri: 'https://app/cb' }
+        )
+      ).rejects.toMatchObject({ statusCode: 401 })
+    })
+
+  rejectsLive('rejects a wrong-issuer token', { iss: 'https://evil.example/' })
+  rejectsLive('rejects a wrong-audience token', { aud: 'someone-else' })
 })
 
 describe('#buildEntraSignOutUrl', () => {

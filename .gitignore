@@ -17,3 +17,7 @@ tsconfig.tsbuildinfo
 # design artifact.
 docs/auth/CHAT-EXPORT-full.md
 docs/auth/CONTEXT-HANDOFF.md
+
+# Defra Customer Identity onboarding pack — internal Defra documents, never commit.
+docs/PesticidesLoginDocs/
+docs/auth/onboarding-answers.md

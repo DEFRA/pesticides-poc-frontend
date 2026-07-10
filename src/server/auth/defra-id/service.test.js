@@ -7,19 +7,23 @@ import {
   startDefraIdSignIn
 } from './service.js'
 import { getAuthSession } from '../session.js'
+import {
+  generateTestKeyPair,
+  idTokenClaims,
+  signIdToken
+} from '#/test-helpers/oidc-test-keys.js'
 
 const WELL_KNOWN = 'https://b2c.example.com/te/.well-known/openid-configuration'
+const ISSUER = 'https://b2c.example.com/'
 const DISCOVERY = {
+  issuer: ISSUER,
   authorization_endpoint: 'https://b2c.example.com/authorize',
   token_endpoint: 'https://b2c.example.com/oauth/token',
+  jwks_uri: 'https://b2c.example.com/discovery/keys',
   end_session_endpoint: 'https://b2c.example.com/logout'
 }
 
-function jwt(payload) {
-  const enc = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url')
-  const withExp = { exp: Math.floor(Date.now() / 1000) + 3600, ...payload }
-  return `${enc({ alg: 'none', typ: 'JWT' })}.${enc(withExp)}.sig`
-}
+const keyPair = generateTestKeyPair('defra-svc-kid')
 
 function stubFetch(routes) {
   return vi.fn(async (url) => {
@@ -97,20 +101,26 @@ describe('#startDefraIdSignIn / #completeDefraIdCallback (live)', () => {
     expect(pending.pendingState).toBeTruthy()
     expect(pending.mode).toBe('live')
 
-    const idToken = jwt({
-      sub: 'p1',
-      email: 'alex@example.com',
-      relationships: ['rel-1:org-1:Org One:::'],
-      currentRelationshipId: 'rel-1',
-      nonce: pending.pendingNonce
-    })
+    const idToken = signIdToken(
+      idTokenClaims({
+        iss: ISSUER,
+        aud: 'client-123',
+        sub: 'p1',
+        email: 'alex@example.com',
+        relationships: ['rel-1:org-1:Org One:::'],
+        currentRelationshipId: 'rel-1',
+        nonce: pending.pendingNonce
+      }),
+      keyPair
+    )
     vi.stubGlobal(
       'fetch',
       stubFetch({
         '.well-known': { body: DISCOVERY },
         '/oauth/token': {
           body: { id_token: idToken, token_type: 'Bearer', expires_in: 3600 }
-        }
+        },
+        '/discovery/keys': { body: { keys: [keyPair.publicJwk] } }
       })
     )
 
