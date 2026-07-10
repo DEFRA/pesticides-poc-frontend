@@ -36,7 +36,6 @@ export function buildAuthDefaults() {
     provider: '',
     mode: 'mock',
     subject: '',
-    crn: '',
     email: '',
     firstName: '',
     lastName: '',
@@ -149,7 +148,6 @@ export async function applyProfile(
   // Normalise optional fields once so a partial profile/token can't leave gaps.
   const p = {
     subject: '',
-    crn: '',
     email: '',
     firstName: '',
     lastName: '',
@@ -168,7 +166,6 @@ export async function applyProfile(
     provider,
     mode,
     subject: p.subject,
-    crn: p.crn,
     email: p.email,
     firstName: p.firstName,
     lastName: p.lastName,

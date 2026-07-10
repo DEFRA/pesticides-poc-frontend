@@ -13,7 +13,6 @@
 export function buildMockDefraIdIdentity() {
   return {
     subject: 'urn:fcp:defra-id:applicant-ulysses',
-    crn: '1100100100',
     email: 'ulysses.alvarez@cognizant.com',
     firstName: 'Ulysses',
     lastName: 'Applicant',

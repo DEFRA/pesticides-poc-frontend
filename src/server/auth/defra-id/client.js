@@ -257,7 +257,6 @@ export function mapDefraIdClaimsToProfile(claims) {
     firstName,
     lastName,
     name,
-    crn: String(claims.crn || ''),
     organisationId: currentRelationshipId,
     organisations: readOrganisations(claims[claimMap.relationships]),
     roles: toStringArray(claims[claimMap.roles]),
