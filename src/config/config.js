@@ -335,9 +335,10 @@ export const config = convict({
         }
       }
     },
-    // Internal case officers / staff -> Microsoft Entra ID. The agreed production
-    // direction is SAML 2.0 SSO; this OIDC config is interim / reference and is
-    // NOT yet confirmed by the Customer Identity onboarding docs.
+    // Internal case officers / staff -> Microsoft Entra ID. Authentication is
+    // OIDC (authorization-code + PKCE), agreed with the architect and team
+    // (2026-07-07) as the Defra standard for new apps per the CCoE guardrail
+    // pattern.
     entra: {
       mode: {
         doc: 'Entra ID auth mode: mock or live',

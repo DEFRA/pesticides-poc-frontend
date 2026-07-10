@@ -8,7 +8,7 @@
 // tenant well-known URL, PKCE (S256) + state + nonce, claim map
 // (oid|sub -> subject, email|preferred_username -> email, app `roles` -> roles).
 // The ID token is fully verified via verifyIdToken (RS256/JWKS signature +
-// iss/aud/exp/nbf/iat/nonce). Production direction is SAML 2.0.
+// iss/aud/exp/nbf/iat/nonce). Case-officer auth is OIDC (agreed 2026-07-07).
 
 import { randomUUID } from 'node:crypto'
 

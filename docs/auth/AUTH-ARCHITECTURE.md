@@ -5,10 +5,10 @@ Service: `pesticides-poc-frontend` (Hapi, CDP Frontend Template).
 
 ## 1. Two user populations, two identity providers
 
-| Population                 | Who                                                 | IdP                                                                    | Status                                                                              |
-| -------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| **External applicants**    | Companies/agents submitting pesticides applications | **Defra Customer Identity (Azure AD B2C)** over OIDC                   | Confirmed by the Customer Identity onboarding docs                                  |
-| **Internal case officers** | HSE/CRD staff processing applications               | **Microsoft Entra ID** (SAML 2.0 SSO in production; interim OIDC here) | **Not** covered by the onboarding docs — architect direction only, still to confirm |
+| Population                 | Who                                                 | IdP                                                  | Status                                                                                                                               |
+| -------------------------- | --------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **External applicants**    | Companies/agents submitting pesticides applications | **Defra Customer Identity (Azure AD B2C)** over OIDC | Confirmed by the Customer Identity onboarding docs                                                                                   |
+| **Internal case officers** | HSE/CRD staff processing applications               | **Microsoft Entra ID** over OIDC (auth-code + PKCE)  | Agreed with architect/team (2026-07-07) as the Defra standard for new apps (CCoE guardrail); app registration onboarding in progress |
 
 The two are independent integrations and must not be conflated. Everything the
 meeting handed us (Customer Sync Data Model, Onboarding Questionnaire, FAQ) is
