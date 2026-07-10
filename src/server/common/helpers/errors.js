@@ -1,4 +1,7 @@
-import { statusCodes } from '../constants/status-codes.js'
+import {
+  statusCodes,
+  HTTP_STATUS_EXCLUSIVE_MAX
+} from '../constants/status-codes.js'
 
 function statusCodeMessage(statusCode) {
   switch (statusCode) {
@@ -29,7 +32,7 @@ function resolveStatusCode(response) {
     boomStatus === statusCodes.internalServerError &&
     Number.isInteger(intended) &&
     intended >= statusCodes.badRequest &&
-    intended < 600
+    intended < HTTP_STATUS_EXCLUSIVE_MAX
   return recoverable ? intended : boomStatus
 }
 
