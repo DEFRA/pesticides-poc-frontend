@@ -1,20 +1,37 @@
-import { sessionCache } from '#/server/plugins/session-cache.js'
+// isSameSite is computed at module load from session.cookie.secure, so each
+// branch is exercised by re-importing the module with SESSION_COOKIE_SECURE set.
+async function loadCookieOptions(secure) {
+  const previous = process.env.SESSION_COOKIE_SECURE
+  process.env.SESSION_COOKIE_SECURE = String(secure)
+  vi.resetModules()
+  try {
+    const { sessionCache } = await import('#/server/plugins/session-cache.js')
+    return sessionCache.options.cookieOptions
+  } finally {
+    if (previous === undefined) {
+      delete process.env.SESSION_COOKIE_SECURE
+    } else {
+      process.env.SESSION_COOKIE_SECURE = previous
+    }
+  }
+}
 
 describe('#sessionCache cookie options', () => {
-  const { cookieOptions } = sessionCache.options
-
-  test('ties SameSite to the Secure flag: None when secure, Lax otherwise', () => {
-    // Live OIDC (response_mode=form_post) needs SameSite=None so the session
-    // cookie survives the cross-site POST callback; local dev over plain HTTP
-    // (secure=false) must stay Lax because browsers drop a non-Secure None.
-    expect(cookieOptions.isSameSite).toBe(
-      cookieOptions.isSecure ? 'None' : 'Lax'
-    )
+  afterAll(() => {
+    vi.resetModules()
   })
 
-  test('never sets SameSite=None without the Secure flag', () => {
-    if (cookieOptions.isSameSite === 'None') {
-      expect(cookieOptions.isSecure).toBe(true)
-    }
+  test('deployed (secure) uses SameSite=None so the cross-site form_post callback keeps the session', async () => {
+    const cookieOptions = await loadCookieOptions(true)
+
+    expect(cookieOptions.isSecure).toBe(true)
+    expect(cookieOptions.isSameSite).toBe('None')
+  })
+
+  test('local dev (non-secure) keeps SameSite=Lax, since browsers drop a non-Secure None cookie', async () => {
+    const cookieOptions = await loadCookieOptions(false)
+
+    expect(cookieOptions.isSecure).toBe(false)
+    expect(cookieOptions.isSameSite).toBe('Lax')
   })
 })
