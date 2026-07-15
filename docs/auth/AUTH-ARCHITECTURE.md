@@ -120,3 +120,25 @@ so the security-sensitive logic transfers cleanly; only routing/session glue cha
 
 All have safe defaults so `config.validate({ allowed: 'strict' })` passes with no
 environment set (mock mode).
+
+## 9. Session cookie `SameSite` policy
+
+Live sign-in (both IdPs) uses `response_mode=form_post`, so the IdP returns the
+result via a **cross-site POST** from its domain to `/auth/{provider}/callback`.
+A `Lax`/`Strict` cookie is not sent on a cross-site POST, so the `@hapi/yar`
+session cookie — which holds the transient OIDC `state`/`nonce`/PKCE verifier —
+would be missing on the callback and the state check would fail with a 422.
+
+The cookie therefore sets **`SameSite=None`**, but only when it is also `Secure`
+(browsers drop a non-Secure `SameSite=None` cookie). `session-cache.js` derives
+this from `session.cookie.secure`: deployed environments (HTTPS, `secure=true`)
+get `None`; local dev (plain HTTP, `secure=false`) stays `Lax`, which is fine
+because local runs in mock mode — a same-site GET callback that never crosses
+origins.
+
+Trade-off (post-POC hardening): `None` applies to the single yar cookie, so the
+authenticated session (not just the ~seconds-long handshake) rides on cross-site
+requests for its full TTL. This is currently acceptable because every route is
+GET-only and the OIDC `state` check is the callback's CSRF defence; a hardening
+step would split the short-lived handshake data into its own `SameSite=None`
+cookie and keep the main authenticated-session cookie `Lax`.
