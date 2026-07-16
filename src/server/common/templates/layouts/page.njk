@@ -3,6 +3,7 @@
 {# Import GOVUK components globally #}
 {% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
 {% from "govuk/components/service-navigation/macro.njk" import govukServiceNavigation %}
+{% from "govuk/macros/logo.njk" import govukLogo %}
 
 {# Import custom components globally #}
 {% from "heading/macro.njk" import appHeading %}
@@ -26,32 +27,39 @@
 {% endblock %}
 
 {% block header %}
-  {# serviceName being used in govukHeader will be @deprecated in v6. It has moved to govukServiceNavigation - https://github.com/alphagov/govuk-frontend/blob/main/CHANGELOG.md#move-service-name-and-navigation-links-from-the-govuk-header-to-service-navigation-component #}
-  {{ govukHeader({
-    homepageUrl: "https://www.gov.uk/",
-    classes: "app-header",
-    containerClasses: "govuk-width-container",
-    serviceName: serviceName,
-    serviceUrl: serviceUrl,
-    useTudorCrown: true
-  }) }}
+  {# Custom GOV.UK header so the signed-in account block (avatar + name + Sign
+     out) can sit in the top bar, like the CDP portal. Reuses the GOV.UK logo
+     macro for the crown; the service name lives in the service navigation. #}
+  <header class="govuk-header app-header" role="banner" data-module="govuk-header">
+    <div class="govuk-header__container govuk-width-container app-header__container">
+      <div class="govuk-header__logo">
+        <a href="https://www.gov.uk/" class="govuk-header__homepage-link">
+          {{ govukLogo({ classes: "govuk-header__logotype", ariaLabelText: "GOV.UK" }) }}
+        </a>
+      </div>
 
-  {% set accountNavEnd %}
-    {% if account %}
-      <li class="govuk-service-navigation__item app-service-navigation__account">
-        <span class="govuk-service-navigation__text">
-          {{ account.name }}{% if account.roleLabel %} ({{ account.roleLabel }}){% endif %}
-        </span>
-      </li>
-      <li class="govuk-service-navigation__item">
-        <a class="govuk-service-navigation__link" href="{{ account.signOutUrl }}" data-testid="header-sign-out">Sign out</a>
-      </li>
-    {% endif %}
-  {% endset %}
+      {% if account %}
+        <div class="app-header__account" data-testid="header-account">
+          <a class="app-header__account-link" href="{{ account.accountUrl }}" data-testid="header-username-link">
+            <svg class="app-header__account-icon" xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38" focusable="false" aria-hidden="true">
+              <g fill="currentColor" fill-rule="evenodd">
+                <circle cx="19" cy="12" r="8"/>
+                <path d="M19 25c6.18 0 11.68 2.15 15.15 5.47C30.68 35.05 25.18 38 19 38S7.32 35.05 3.85 30.47C7.32 27.15 12.82 25 19 25Z"/>
+              </g>
+            </svg>
+            <span data-testid="header-username">{{ account.name }}{% if account.roleLabel %} ({{ account.roleLabel }}){% endif %}</span>
+          </a>
+          <span class="app-header__account-divider" aria-hidden="true">|</span>
+          <a class="govuk-header__link app-header__account-link" href="{{ account.signOutUrl }}" data-testid="header-sign-out">Sign out</a>
+        </div>
+      {% endif %}
+    </div>
+  </header>
 
   {{ govukServiceNavigation({
-    navigation: navigation,
-    slots: { navigationEnd: accountNavEnd }
+    serviceName: serviceName,
+    serviceUrl: serviceUrl,
+    navigation: navigation
   }) }}
 {% endblock %}
 

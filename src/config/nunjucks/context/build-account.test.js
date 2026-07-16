@@ -39,6 +39,7 @@ describe('#buildAccount', () => {
     expect(buildAccount(request)).toEqual({
       name: 'Jane Smith',
       roleLabel: 'Case officer',
+      accountUrl: '/auth/account',
       signOutUrl: '/auth/sign-out'
     })
   })
