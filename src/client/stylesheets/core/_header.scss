@@ -5,3 +5,13 @@
 .app-header {
   border-bottom-color: $app-light-grey;
 }
+
+// Push the signed-in account block (name + Sign out) to the right-hand end of
+// the service navigation bar, matching the CDP portal header. Uses the GOV.UK
+// "tablet" breakpoint (40.0625em); below it the nav collapses into the menu and
+// the account items sit at the end of the list.
+.app-service-navigation__account {
+  @media (min-width: 40.0625em) {
+    margin-left: auto;
+  }
+}

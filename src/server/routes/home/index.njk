@@ -18,8 +18,8 @@
         {% else %}
           <p>{{ t.signedOutIntro }}</p>
           <ul class="govuk-list govuk-list--bullet">
-            <li><a class="govuk-link" href="/auth/defra-id/sign-in" data-testid="home-applicant-sign-in">{{ t.applicantLink }}</a></li>
             <li><a class="govuk-link" href="/auth/entra/sign-in" data-testid="home-staff-sign-in">{{ t.caseOfficerLink }}</a></li>
+            <li class="app-option--disabled" data-testid="home-applicant-unavailable" aria-disabled="true">{{ t.applicantLink }}</li>
           </ul>
         {% endif %}
       </div>

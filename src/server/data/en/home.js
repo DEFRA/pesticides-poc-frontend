@@ -2,12 +2,12 @@
 export const homeTranslations = {
   home: {
     pageTitle: 'Home',
-    heading: 'PPP Future State MVP',
-    caption: 'pesticides-poc-frontend',
+    heading: 'DEFRA / HSE Entra ID Common Login pattern',
+    caption: 'Applicable to - PPP Future State MVP & OCR Register',
     signedInPrefix: 'You are signed in as',
     signedOutIntro: 'Sign in to the pesticides service:',
-    applicantLink: 'Applicants (Defra Customer Identity)',
-    caseOfficerLink: 'Case officers (Microsoft Entra ID)',
+    caseOfficerLink: 'Case officers (DEFRA/HSE)',
+    applicantLink: 'Applicants (External Users) — not ready',
     viewAccount: 'View your account',
     or: 'or',
     signOut: 'sign out'

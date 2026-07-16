@@ -36,8 +36,22 @@
     useTudorCrown: true
   }) }}
 
+  {% set accountNavEnd %}
+    {% if account %}
+      <li class="govuk-service-navigation__item app-service-navigation__account">
+        <span class="govuk-service-navigation__text">
+          {{ account.name }}{% if account.roleLabel %} ({{ account.roleLabel }}){% endif %}
+        </span>
+      </li>
+      <li class="govuk-service-navigation__item">
+        <a class="govuk-service-navigation__link" href="{{ account.signOutUrl }}" data-testid="header-sign-out">Sign out</a>
+      </li>
+    {% endif %}
+  {% endset %}
+
   {{ govukServiceNavigation({
-    navigation: navigation
+    navigation: navigation,
+    slots: { navigationEnd: accountNavEnd }
   }) }}
 {% endblock %}
 

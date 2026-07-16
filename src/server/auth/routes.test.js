@@ -106,6 +106,10 @@ describe('#auth sign-in flows (mock mode)', () => {
     expect(register.result).toEqual(
       expect.stringContaining('Ulysses Applicant')
     )
+    // The signed-in header account block shows for applicants too.
+    expect(register.result).toEqual(
+      expect.stringContaining('data-testid="header-sign-out"')
+    )
 
     const account = await server.inject({
       method: 'GET',
@@ -186,6 +190,10 @@ describe('#auth sign-in flows (mock mode)', () => {
       expect.stringContaining('Ulysses Case Officer')
     )
     expect(admin.result).toEqual(expect.stringContaining('Applications'))
+    // The signed-in header shows the account block (name + sign-out link).
+    expect(admin.result).toEqual(
+      expect.stringContaining('data-testid="header-sign-out"')
+    )
   })
 
   test('sign-out clears the session and redirects home', async () => {
