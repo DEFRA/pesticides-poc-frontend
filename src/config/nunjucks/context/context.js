@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 
 import { config } from '#/config/config.js'
 import { buildNavigation } from './build-navigation.js'
+import { buildAccount } from './build-account.js'
 import { createLogger } from '#/server/common/helpers/logging/logger.js'
 
 const logger = createLogger()
@@ -29,6 +30,7 @@ export function context(request) {
     serviceUrl: '/',
     breadcrumbs: [],
     navigation: buildNavigation(request),
+    account: buildAccount(request),
     getAssetPath(asset) {
       if (!config.get('isProduction')) {
         return `${assetPath}/${asset}`

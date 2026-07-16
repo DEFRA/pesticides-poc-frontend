@@ -71,6 +71,7 @@ describe('context and cache', () => {
               href: '/about'
             }
           ],
+          account: null,
           serviceName: 'pesticides-poc-frontend',
           serviceUrl: '/'
         })
@@ -160,6 +161,7 @@ describe('context and cache', () => {
               href: '/about'
             }
           ],
+          account: null,
           serviceName: 'pesticides-poc-frontend',
           serviceUrl: '/'
         })
