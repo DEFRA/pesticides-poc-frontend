@@ -7,3 +7,12 @@
   padding-top: govuk-spacing(4);
   padding-bottom: govuk-spacing(3);
 }
+
+// A list option that is present but not yet available (e.g. the Applicants
+// sign-in while it is under construction). Rendered faded and non-interactive
+// so it reads clearly as disabled. Disabled controls are exempt from the WCAG
+// contrast requirement, so the lighter grey is acceptable here.
+.app-option--disabled {
+  color: govuk-colour("mid-grey");
+  cursor: not-allowed;
+}
