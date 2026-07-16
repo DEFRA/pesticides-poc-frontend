@@ -1,17 +1,56 @@
+@use "govuk-frontend" as *;
 @use "variables/colours" as *;
-
-// Example namespaced custom element style CSS classes
 
 .app-header {
   border-bottom-color: $app-light-grey;
 }
 
-// Push the signed-in account block (name + Sign out) to the right-hand end of
-// the service navigation bar, matching the CDP portal header. Uses the GOV.UK
-// "tablet" breakpoint (40.0625em); below it the nav collapses into the menu and
-// the account items sit at the end of the list.
-.app-service-navigation__account {
-  @media (min-width: 40.0625em) {
-    margin-left: auto;
+// Lay out the top bar as a row: GOV.UK logo on the left, the signed-in account
+// block on the right (like the CDP portal). Wraps on narrow screens.
+.app-header__container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+
+  .govuk-header__logo {
+    width: auto;
+    margin-bottom: 0;
+    padding-right: govuk-spacing(2);
   }
+}
+
+// Signed-in account block: avatar + name link, a divider, then Sign out. The
+// header sits on GOV.UK blue, so the text and icon are white.
+.app-header__account {
+  display: flex;
+  align-items: center;
+  gap: govuk-spacing(2);
+
+  @include govuk-font(16);
+}
+
+.app-header__account-link {
+  display: inline-flex;
+  align-items: center;
+  gap: govuk-spacing(1);
+
+  &:link,
+  &:visited {
+    color: govuk-colour("white");
+  }
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.app-header__account-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.app-header__account-divider {
+  color: govuk-colour("white");
 }

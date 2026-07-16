@@ -194,6 +194,12 @@ describe('#auth sign-in flows (mock mode)', () => {
     expect(admin.result).toEqual(
       expect.stringContaining('data-testid="header-sign-out"')
     )
+    // The header name links to the account page (same as "View your account").
+    expect(admin.result).toEqual(
+      expect.stringContaining(
+        'href="/auth/account" data-testid="header-username-link"'
+      )
+    )
   })
 
   test('sign-out clears the session and redirects home', async () => {
