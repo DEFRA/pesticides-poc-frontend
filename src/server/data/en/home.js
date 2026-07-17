@@ -2,10 +2,9 @@
 export const homeTranslations = {
   home: {
     pageTitle: 'Home',
-    heading: 'DEFRA / HSE Entra ID Common Login pattern',
-    caption: 'Applicable to - PPP Future State MVP & OCR Register',
+    heading: 'OCR Register Identity & Access Management',
     signedInPrefix: 'You are signed in as',
-    signedOutIntro: 'Sign in to the pesticides service:',
+    signedOutIntro: 'Sign in to the service as :',
     caseOfficerLink: 'Case officers (DEFRA/HSE)',
     applicantLink: 'Applicants (External Users) — not ready',
     viewAccount: 'View your account',

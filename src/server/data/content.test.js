@@ -4,7 +4,7 @@ import { welsh } from './cy/cy.js'
 describe('#language content', () => {
   test('English content exposes the expected page sections', () => {
     expect(english.home.heading).toBe(
-      'DEFRA / HSE Entra ID Common Login pattern'
+      'OCR Register Identity & Access Management'
     )
     expect(english.defraIdSignIn.signInButton).toBe('Sign in')
     expect(english.entraSignIn.caption).toBe('Microsoft Entra ID')
