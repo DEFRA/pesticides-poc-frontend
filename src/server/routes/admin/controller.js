@@ -5,7 +5,7 @@
 // The full applications list is future work; UI is intentionally minimal. Text
 // comes from the central language content (defaults to English).
 
-import { getAuthSession, requireCaseOfficer } from '#/server/auth/session.js'
+import { getAuthSession, requireCaseOfficer } from '@defra/hapi-oidc-auth'
 import { english } from '#/server/data/en/en.js'
 import { LANG_EN } from '#/server/data/constants.js'
 
