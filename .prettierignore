@@ -14,4 +14,3 @@ docs/auth/shared-*.md
 docs/auth/entra-oidc.env.local.template
 docs/walkthroughs/
 docs/PesticidesLoginDocs/
-.claude/
