@@ -1,5 +1,4 @@
 import { homeTranslations } from './home.js'
-import { authTranslations } from './auth.js'
 import { journeyTranslations } from './journeys.js'
 
 /**
@@ -8,6 +7,5 @@ import { journeyTranslations } from './journeys.js'
  */
 export const english = {
   ...homeTranslations,
-  ...authTranslations,
   ...journeyTranslations
 }

@@ -1,4 +1,4 @@
-import { getAuthSession } from '#/server/auth/session.js'
+import { getAuthSession } from '@defra/hapi-oidc-auth'
 import { english } from '#/server/data/en/en.js'
 import { LANG_EN } from '#/server/data/constants.js'
 
