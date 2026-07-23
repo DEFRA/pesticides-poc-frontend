@@ -20,7 +20,7 @@ export const journeyTranslations = {
 
   admin: {
     pageTitle: 'Applications',
-    heading: 'Applications',
+    heading: 'OCR Register',
     caption: 'Case officer',
     signedInPrefix: SIGNED_IN_PREFIX,
     placeholder:
