@@ -13,7 +13,7 @@ describe('#language content', () => {
     expect(english.register.heading).toBe(
       'Register for a pesticides application'
     )
-    expect(english.admin.heading).toBe('Applications')
+    expect(english.admin.heading).toBe('OCR Register')
   })
 
   test('Welsh placeholder mirrors English until it is translated', () => {
