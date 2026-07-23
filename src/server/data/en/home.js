@@ -3,7 +3,6 @@ export const homeTranslations = {
   home: {
     pageTitle: 'Home',
     heading: 'OCR Register',
-    caption: 'Identity & Access Management (Demo)',
     signedInPrefix: 'You are signed in as',
     signedOutIntro: 'Sign in to the service as :',
     caseOfficerLink: 'Case officers (DEFRA/HSE)',
