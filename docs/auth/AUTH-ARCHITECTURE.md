@@ -3,6 +3,16 @@
 Status: **draft / scaffold** (step 1). For review before the live build (step 2).
 Service: `pesticides-poc-frontend` (Hapi, CDP Frontend Template).
 
+> **Update (EQ-329, 2026-08-26):** the auth implementation no longer lives in this
+> repo — it was extracted to the published npm package
+> [`@defra/hapi-oidc-auth`](https://www.npmjs.com/package/@defra/hapi-oidc-auth)
+> (case officer / Entra, wired in) and `@defra/hapi-oidc-auth-defra-id` (applicant /
+> Defra Customer Identity, **parked — not yet published**). This repo's applicant
+> (`register`) journey and its `auth.defraId` / `DEFRA_ID_*` config were **removed**;
+> only the case-officer (Entra) journey is active. The sections below describing the
+> in-repo `src/server/auth/**` code and the applicant Defra ID config reflect the
+> earlier design and the parked future-state plan, not the current code.
+
 ## 1. Two user populations, two identity providers
 
 | Population                 | Who                                                 | IdP                                                  | Status                                                                                                                               |
@@ -113,10 +123,13 @@ so the security-sensitive logic transfers cleanly; only routing/session glue cha
 ## 8. Config keys added (step 1)
 
 `auth.defraId`: `mode`, `wellKnownUrl`, `clientId`, `clientSecret`, `serviceId`,
-`policy`, `publicBaseUrl`, `redirectPath`, `signOutRedirectUrl`.
+`policy`, `publicBaseUrl`, `redirectPath`, `signOutRedirectUrl`. _(Removed from
+this repo in EQ-329 — returns when the applicant journey is re-added.)_
 
 `auth.entra`: `mode`, `tenantId`, `clientId`, `clientSecret`, `publicBaseUrl`,
-`redirectPath`, `signOutRedirectUrl`, `caseOfficerRoleValue`.
+`redirectPath`, `signOutRedirectUrl`, `roleValues` (was `caseOfficerRoleValue`;
+env var `ENTRA_CASE_OFFICER_ROLE_VALUE`). Post-login/sign-out destinations are
+passed to the plugin as `redirects` literals in `src/server/plugins/router.js`.
 
 All have safe defaults so `config.validate({ allowed: 'strict' })` passes with no
 environment set (mock mode).

@@ -9,11 +9,8 @@
     <div class="govuk-grid-column-two-thirds">
       <div class="govuk-body" data-testid="app-page-body">
         {% if session.isAuthenticated %}
-          <p>{{ t.signedInPrefix }} <strong>{{ session.name }}</strong> ({{ session.roleLabel or session.role }}).</p>
-          <p>
-            <a class="govuk-link" href="/auth/account">{{ t.viewAccount }}</a>
-            {{ t.or }} <a class="govuk-link" href="/auth/sign-out">{{ t.signOut }}</a>.
-          </p>
+          {# Account link + sign-out live in the header account block (page.njk). #}
+          <p>{{ t.signedInPrefix }} <strong>{{ session.name }}</strong> ({{ session.roles | join(", ") }}).</p>
         {% else %}
           <p>{{ t.signedOutIntro }}</p>
           <ul class="govuk-list govuk-list--bullet">

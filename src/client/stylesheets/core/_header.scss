@@ -45,6 +45,27 @@
   }
 }
 
+// Sign-out is POST-only (CSRF), so it is a form-submit button styled to match
+// the account link rather than an anchor.
+.app-header__signout-form {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.app-header__signout {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: govuk-colour("white");
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
 .app-header__account-icon {
   width: 24px;
   height: 24px;

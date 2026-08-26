@@ -6,9 +6,6 @@ export const homeTranslations = {
     signedInPrefix: 'You are signed in as',
     signedOutIntro: 'Sign in to the service as :',
     caseOfficerLink: 'Case officers (DEFRA/HSE)',
-    applicantLink: 'Applicants (External Users) — not ready',
-    viewAccount: 'View your account',
-    or: 'or',
-    signOut: 'sign out'
+    applicantLink: 'Applicants (External Users) — not ready'
   }
 }
