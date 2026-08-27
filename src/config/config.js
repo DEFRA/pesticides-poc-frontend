@@ -216,125 +216,6 @@ export const config = convict({
     }
   },
   auth: {
-    // External applicants -> Defra Customer Identity (Azure AD B2C) over OIDC.
-    // See docs/auth/AUTH-ARCHITECTURE.md. `mock` needs no credentials and is the
-    // default so the service runs for demos / user research out of the box.
-    defraId: {
-      mode: {
-        doc: 'Defra Identity auth mode: mock (local identities) or live (real B2C)',
-        format: ['mock', 'live'],
-        default: 'mock',
-        env: 'DEFRA_ID_AUTH_MODE'
-      },
-      wellKnownUrl: {
-        doc: 'OIDC discovery (well-known) document URL',
-        format: String,
-        default: '',
-        env: 'DEFRA_ID_WELL_KNOWN_URL'
-      },
-      clientId: {
-        doc: 'Registered client id (also sent as an additional scope)',
-        format: String,
-        default: '',
-        env: 'DEFRA_ID_CLIENT_ID'
-      },
-      clientSecret: {
-        doc: 'Confidential-client secret (secure runtime only, never committed)',
-        format: String,
-        default: '',
-        sensitive: true,
-        env: 'DEFRA_ID_CLIENT_SECRET'
-      },
-      serviceId: {
-        doc: 'Defra Identity service id (authorize parameter)',
-        format: String,
-        default: '',
-        env: 'DEFRA_ID_SERVICE_ID'
-      },
-      policy: {
-        doc: 'B2C policy name (authorize parameter `p`)',
-        format: String,
-        default: '',
-        env: 'DEFRA_ID_POLICY'
-      },
-      publicBaseUrl: {
-        doc: 'Public base URL used to build redirect URIs',
-        format: String,
-        default: '',
-        env: 'DEFRA_ID_PUBLIC_BASE_URL'
-      },
-      redirectPath: {
-        doc: 'Callback path registered with the IdP',
-        format: String,
-        default: '/auth/defra-id/callback',
-        env: 'DEFRA_ID_REDIRECT_PATH'
-      },
-      signOutRedirectUrl: {
-        doc: 'Post-logout redirect URL',
-        format: String,
-        default: '/',
-        env: 'DEFRA_ID_SIGN_OUT_REDIRECT_URL'
-      },
-      // Claim contract: the exact token claim names to read. Defaults match the
-      // prototype's assumed contract; override per env if the live Defra Identity
-      // token uses different names (no code change needed).
-      claims: {
-        sub: {
-          doc: 'Claim holding the stable person id (subject)',
-          format: String,
-          default: 'sub',
-          env: 'DEFRA_ID_CLAIM_SUB'
-        },
-        email: {
-          doc: 'Claim holding the email address',
-          format: String,
-          default: 'email',
-          env: 'DEFRA_ID_CLAIM_EMAIL'
-        },
-        firstName: {
-          doc: 'Claim holding the first name',
-          format: String,
-          default: 'firstName',
-          env: 'DEFRA_ID_CLAIM_FIRST_NAME'
-        },
-        lastName: {
-          doc: 'Claim holding the last name',
-          format: String,
-          default: 'lastName',
-          env: 'DEFRA_ID_CLAIM_LAST_NAME'
-        },
-        contactId: {
-          doc: 'Claim holding the contact id',
-          format: String,
-          default: 'contactId',
-          env: 'DEFRA_ID_CLAIM_CONTACT_ID'
-        },
-        currentRelationshipId: {
-          doc: 'Claim holding the currently-selected organisation/relationship id',
-          format: String,
-          default: 'currentRelationshipId',
-          env: 'DEFRA_ID_CLAIM_CURRENT_RELATIONSHIP_ID'
-        },
-        relationships: {
-          doc: 'Claim holding the list of person↔organisation relationships',
-          format: String,
-          default: 'relationships',
-          env: 'DEFRA_ID_CLAIM_RELATIONSHIPS'
-        },
-        roles: {
-          doc: 'Claim holding the IdP roles list',
-          format: String,
-          default: 'roles',
-          env: 'DEFRA_ID_CLAIM_ROLES'
-        },
-        sessionId: {
-          doc: 'Claim holding the IdP session id (Defra Identity uses `sessionId`)',
-          format: String,
-          default: 'sessionId',
-          env: 'DEFRA_ID_CLAIM_SID'
-        }
-      }
-    },
     // Internal case officers / staff -> Microsoft Entra ID. Authentication is
     // OIDC (authorization-code + PKCE), agreed with the architect and team
     // (2026-07-07) as the Defra standard for new apps per the CCoE guardrail
@@ -383,8 +264,8 @@ export const config = convict({
         default: '/',
         env: 'ENTRA_SIGN_OUT_REDIRECT_URL'
       },
-      caseOfficerRoleValue: {
-        doc: 'Entra app role value that maps to the case-officer role',
+      roleValues: {
+        doc: 'Entra app-role value(s) that grant case-officer access (matched by requireAuthorised)',
         format: String,
         default: 'case_officer',
         env: 'ENTRA_CASE_OFFICER_ROLE_VALUE'

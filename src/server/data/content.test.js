@@ -4,10 +4,8 @@ import { welsh } from './cy/cy.js'
 describe('#language content', () => {
   test('English content exposes the expected page sections', () => {
     expect(english.home.heading).toBe('OCR Register')
-    // Sign-in / account content now ships with @defra/hapi-oidc-auth.
-    expect(english.register.heading).toBe(
-      'Register for a pesticides application'
-    )
+    // Sign-in / account content now ships with @defra/hapi-oidc-auth; the
+    // applicant register journey is parked until that plugin is published.
     expect(english.admin.heading).toBe('OCR Register')
   })
 

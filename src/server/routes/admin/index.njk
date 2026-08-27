@@ -9,13 +9,10 @@
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
       <p class="govuk-body" data-testid="admin-officer">
-        {{ t.signedInPrefix }} {{ session.name }} ({{ session.roleLabel or session.role }}).
+        {{ t.signedInPrefix }} {{ session.name }} ({{ session.roles | join(", ") }}).
       </p>
+      {# Account link + sign-out live in the header account block (page.njk). #}
       <p class="govuk-body">{{ t.placeholder }}</p>
-      <p class="govuk-body">
-        <a class="govuk-link" href="/auth/account">{{ t.viewAccount }}</a>
-        {{ t.or }} <a class="govuk-link" href="/auth/sign-out">{{ t.signOut }}</a>.
-      </p>
     </div>
   </div>
 

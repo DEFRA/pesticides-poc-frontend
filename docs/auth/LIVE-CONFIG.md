@@ -1,5 +1,12 @@
 # Live sign-in configuration — variables to populate
 
+> **Update (EQ-329, 2026-08-26):** only the **case-officer (Entra)** flow is wired
+> in this repo. The **applicant (Defra Customer Identity / `DEFRA_ID_*`)** flow and
+> its config were removed and are **parked** with the unpublished
+> `@defra/hapi-oidc-auth-defra-id` plugin — the applicant section and go-live steps
+> below apply only once that journey is re-added. The Entra variable table remains
+> current.
+
 How to switch each sign-in flow from `mock` to **live** against the real IdP.
 
 - The live flows are **already implemented** (OIDC auth-code + PKCE, discovery, token

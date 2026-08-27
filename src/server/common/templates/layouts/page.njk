@@ -50,7 +50,11 @@
             <span data-testid="header-username">{{ account.name }}{% if account.roleLabel %} ({{ account.roleLabel }}){% endif %}</span>
           </a>
           <span class="app-header__account-divider" aria-hidden="true">|</span>
-          <a class="govuk-header__link app-header__account-link" href="{{ account.signOutUrl }}" data-testid="header-sign-out">Sign out</a>
+          {# Sign-out is POST-only (CSRF) in @defra/hapi-oidc-auth 0.3.0; submit
+             via a form, not a GET link. #}
+          <form class="app-header__signout-form" method="post" action="{{ account.signOutUrl }}">
+            <button type="submit" class="govuk-header__link app-header__account-link app-header__signout" data-testid="header-sign-out">Sign out</button>
+          </form>
         </div>
       {% endif %}
     </div>
