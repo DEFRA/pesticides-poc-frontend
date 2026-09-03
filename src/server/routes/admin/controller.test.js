@@ -55,7 +55,9 @@ describe('#adminApplicationsController (protected)', () => {
     })
 
     expect(statusCode).toBe(statusCodes.ok)
-    expect(result).toEqual(expect.stringContaining('data-testid="admin-officer"'))
+    expect(result).toEqual(
+      expect.stringContaining('data-testid="admin-officer"')
+    )
     // Role must render from the session `roles` array (0.3.0 dropped role/roleLabel);
     // guards against the empty-parens "(...)" regression.
     expect(result).toEqual(expect.stringContaining('(case_officer)'))
